@@ -61,11 +61,9 @@ class IMproVision(gui.framewindow.FrameOverlay):
             if not self.doc.model.frame_enabled:
                 self.doc.app.find_action("FrameEditMode").activate()
         else:
-            self.redraw()
+            self.redraw(True)
 
     def paint(self, cr):
-        gui.framewindow.FrameOverlay.paint(self, cr)
-
         if self.active:
 
             # TODO: consider angles
