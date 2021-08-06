@@ -1,6 +1,12 @@
 import threading
 import math
 
+from lib.gibindings import Gdk
+import lib.color
+
+from lib.pycompat import xrange
+from lib.pycompat import PY3
+
 import gui.framewindow
 import gui.drawutils
 
@@ -50,37 +56,48 @@ class IMproVision(gui.framewindow.FrameOverlay):
             self.threads_started = True
         self.active = active
         self.step = 0
-        self.doc.app.find_action("FrameEditMode").activate()
+        if active:
+            self.sleeper.set()
+            if not self.doc.model.frame_enabled:
+                self.doc.app.find_action("FrameEditMode").activate()
+        else:
+            self.redraw()
 
     def paint(self, cr):
         gui.framewindow.FrameOverlay.paint(self, cr)
 
-        # TODO: consider angles
-        base, _, _, top = self._display_corners
-        base = (base[0] + self.step, base[1])
-        top = (top[0] + self.step, top[1])
+        if self.active:
 
-        if self.step_changed:
-            self.step_changed = False
+            # TODO: consider angles
+            base, _, _, top = self._display_corners
+            base = (base[0] + self.step, base[1])
+            top = (top[0] + self.step, top[1])
+            h = int(top[1] - base[1])
 
-            self.active_row = [self.doc.tdw.pick_color(int(base[0]), y, 1) for y in range(int(base[1]), int(top[1]))]
-            self.data_ready.set()
+            if self.step_changed:
+                self.step_changed = False
 
-        # draw scanline
-        cr.new_path()
-        cr.move_to(*base)
-        cr.line_to(*top)
-        cr.set_line_width(0)
-        gui.drawutils.render_drop_shadow(cr, z=1, line_width=self.OUTLINE_WIDTH)
+                surf = self.doc.tdw.renderer._new_image_surface_from_visible_area(int(base[0]), int(base[1]), 1, h, use_filter=False)
+                self.active_row = Gdk.pixbuf_get_from_surface(surf, 0, 0, 1, h)
+
+                self.data_ready.set()
+
+            # draw scanline
+            cr.new_path()
+            cr.move_to(*base)
+            cr.line_to(*top)
+            cr.set_line_width(0)
+            gui.drawutils.render_drop_shadow(cr, z=1, line_width=self.OUTLINE_WIDTH)
 
     def updateVision(self):
         while True:
             if self.active:
-                _, _, w, _ = self.doc.model.get_frame()
+                self.sleeper.clear()
+                base, side, _, _ = self._display_corners
+                w = int(side[0] - base[0])
                 if w == 0:
                     self.sleeper.wait(timeout=0.01)
                     continue
-                w = int(w)
                 self.step = (self.step + self.stepinc) % w
                 self.step_changed = True
                 self.redraw(True)
@@ -89,11 +106,30 @@ class IMproVision(gui.framewindow.FrameOverlay):
                     self.stepinc = math.ceil(self.timeres / sleeptime)
                     sleeptime = self.timeres
                 self.sleeper.wait(timeout=sleeptime)
+            else:
+                self.sleeper.wait()
 
     def processSound(self):
         while True:
             self.data_ready.wait()
             self.data_ready.clear()
 
-            print("new data: {}".format(self.active_row))
+            n_channels = self.active_row.get_n_channels()
+            assert n_channels in (3, 4)
+            data = self.active_row.get_pixels()
+            if PY3:
+                col = [
+                    lib.color.RGBColor(data[y + n_channels]/255,
+                                       data[y + n_channels + 1]/255,
+                                       data[y + n_channels + 2]/255)
+                    for y in xrange(self.active_row.get_height())
+                ]
+            else:
+                col = [
+                    lib.color.RGBColor(ord(data[y + n_channels])/255,
+                                       ord(data[y + n_channels + 1])/255,
+                                       ord(data[y + n_channels + 2])/255)
+                    for y in xrange(self.active_row.get_height())
+                ]
+
             # TODO: process self.active_row
