@@ -202,6 +202,23 @@ Vocabulary
           <property name="icon-name">mypaint-colors-symbolic</property>
         </object>
       </child>
+      <!-- main improvision tool action -->
+      <child>
+        <object class="MyPaintFactoryAction" id="IMproVision">
+          <property name="label" translatable="yes" context="Toolbar (label)">IMproVision</property>
+          <property name="short-label" translatable="yes" context="Toolbar (short labels)">IMproVision</property>
+          <property name="tooltip" translatable="yes" context="Toolbar (tooltips)">IMproVision settings.</property>
+          <property name="icon-name">improvision-group-symbolic</property>
+        </object>
+      </child>
+      <child>
+        <object class="GtkToggleAction" id="IMproVisionStartRead">
+          <property name="label" translatable="yes" context="Menu→View (labels), Accel Editor (labels)">Start IMproVision</property>
+          <property name="tooltip" translatable="yes" context="Accel Editor (descriptions)">Start IMproVision reading and playback.</property>
+          <signal name="activate" handler="improvision_read_toggled_cb"/>
+        </object>
+        <accelerator key="i" modifiers="GDK_CONTROL_MASK"/>
+      </child>
       <!-- Layer modes: defined in gui.layermodes -->
       <child>
         <object class="MyPaintFactoryAction" id="LayerMode">

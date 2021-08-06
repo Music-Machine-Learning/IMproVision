@@ -1950,6 +1950,12 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             self.saved_view = None
             self.notify_view_changed(immediate=True)
 
+    def improvision_read_toggled_cb(self, action):
+        """Callback: toggles IMproVision playback status.
+        """
+
+        self.app.drawWindow.improvision.toggleVision(action.get_active())
+
     def fit_view(self):
         """Programmatically fits the view to the document"""
         bbox = tuple(self.tdw.doc.get_effective_bbox())

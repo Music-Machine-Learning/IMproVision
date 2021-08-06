@@ -46,6 +46,7 @@ the Free Software Foundation; either version 2 of the License, or
 
   <toolbar name="toolbar2">
     <placeholder name="subwindows-toolitems">
+      <toolitem action="IMproVision"/>
       <toolitem action="ColorAdjusters"/>
       <toolitem action="BrushGroups"/>
       <separator/>
