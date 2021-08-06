@@ -204,20 +204,37 @@ Vocabulary
       </child>
       <!-- main improvision tool action -->
       <child>
-        <object class="MyPaintFactoryAction" id="IMproVision">
+        <object class="GtkToggleAction" id="ToggleIMproVisionTool">
           <property name="label" translatable="yes" context="Toolbar (label)">IMproVision</property>
-          <property name="short-label" translatable="yes" context="Toolbar (short labels)">IMproVision</property>
           <property name="tooltip" translatable="yes" context="Toolbar (tooltips)">IMproVision settings.</property>
           <property name="icon-name">improvision-group-symbolic</property>
+          <signal name="activate" handler="toggle_dockpanel_cb"/>
+        </object>
+        <accelerator key="i" modifiers="GDK_CONTROL_MASK"/>
+      </child>
+      <child>
+        <object class="GtkAction" id="IMproVisionTrigger">
+          <property name="label" translatable="yes" context="Menu→IMproVision (labels), Accel Editor (labels)" >Trigger read</property>
+          <property name="tooltip" translatable="yes" context="Accel Editor (descriptions)">Trigger a single read cycle</property>
+          <property name="icon-name">improvision-play-symbolic</property>
+          <signal name="activate" handler="improvision_read_trigger_cb"/>
         </object>
       </child>
       <child>
-        <object class="GtkToggleAction" id="IMproVisionStartRead">
-          <property name="label" translatable="yes" context="Menu→View (labels), Accel Editor (labels)">Start IMproVision</property>
-          <property name="tooltip" translatable="yes" context="Accel Editor (descriptions)">Start IMproVision reading and playback.</property>
-          <signal name="activate" handler="improvision_read_toggled_cb"/>
+        <object class="GtkAction" id="IMproVisionLoop">
+          <property name="label" translatable="yes" context="Menu→IMproVision (labels), Accel Editor (labels)" >Loop read</property>
+          <property name="tooltip" translatable="yes" context="Accel Editor (descriptions)">Start reading loop cycle</property>
+          <property name="icon-name">improvision-loop-symbolic</property>
+          <signal name="activate" handler="improvision_read_loop_cb"/>
         </object>
-        <accelerator key="i" modifiers="GDK_CONTROL_MASK"/>
+      </child>
+      <child>
+        <object class="GtkAction" id="IMproVisionStop">
+          <property name="label" translatable="yes" context="Menu→IMproVision (labels), Accel Editor (labels)" >Stop reading</property>
+          <property name="tooltip" translatable="yes" context="Accel Editor (descriptions)">Stop image reading cycle</property>
+          <property name="icon-name">improvision-stop-symbolic</property>
+          <signal name="activate" handler="improvision_read_stop_cb"/>
+        </object>
       </child>
       <!-- Layer modes: defined in gui.layermodes -->
       <child>

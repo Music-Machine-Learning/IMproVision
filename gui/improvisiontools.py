@@ -1,35 +1,34 @@
 from lib.gibindings import Gtk
 from . import widgets
 
+from .toolstack import SizedVBoxToolWidget, TOOL_WIDGET_NATURAL_HEIGHT_SHORT
+from lib.gettext import gettext as _
+from .widgets import inline_toolbar
 
-def _new_improvision_menu():
-    from gui.application import get_app
-    app = get_app()
-    menu = Gtk.Menu()
-    action_names = [
-        "IMproVisionStartRead",
-    ]
-    for an in action_names:
-        if an is None:
-            item = Gtk.SeparatorMenuItem()
-        else:
-            action = app.find_action(an)
-            item = Gtk.MenuItem()
-            item.set_use_action_appearance(True)
-            item.set_related_action(action)
-        menu.append(item)
-    return menu
-
-
-class IMproVisionToolItem (widgets.MenuButtonToolItem):
-    """Toolbar item for IMproVision settings
-
-    This is instantiated by the app's UIManager using a FactoryAction which
-    must be named "IMproVision" (see factoryaction.py).
+class IMproVisionTool (SizedVBoxToolWidget):
+    """Dockable panel showing options for IMproVision
     """
 
-    __gtype_name__ = 'MyPaintIMproVisionToolItem'
+    ## Class constants
+
+    SIZED_VBOX_NATURAL_HEIGHT = TOOL_WIDGET_NATURAL_HEIGHT_SHORT
+
+    tool_widget_icon_name = "improvision-group-symbolic"
+    tool_widget_title = _("IMproVision")
+    tool_widget_description = _("IMproVision related configurations and activators")
+
+    __gtype_name__ = 'MyPaintIMproVisionTool'
 
     def __init__(self):
-        widgets.MenuButtonToolItem.__init__(self)
-        self.menu = _new_improvision_menu()
+        SizedVBoxToolWidget.__init__(self)
+        from gui.application import get_app
+        app = get_app()
+        self.app = app
+        toolbar = inline_toolbar(
+            app, [
+                ("IMproVisionTrigger", None),
+                ("IMproVisionLoop", None),
+                ("IMproVisionStop", None),
+            ])
+
+        self.pack_start(toolbar, False, True, 0)
