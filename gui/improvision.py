@@ -34,16 +34,11 @@ class IMproVision(gui.framewindow.FrameOverlay):
         self.stepinc = 1
         self.step_changed = False
 
-        self.thread = threading.Thread(target=self.updateVision)
+        self.thread = threading.Thread(target=self.updateVision, daemon=True)
         self.thread_started = False
         self.sleeper = threading.Event()
 
         gui.framewindow.FrameOverlay.__init__(self, doc)
-
-    def __del__(self):
-        self.running = False
-        self.sleeper.set()
-        self.thread.join()
 
     def toggleVision(self, active):
         if not self.thread_started:
@@ -52,11 +47,11 @@ class IMproVision(gui.framewindow.FrameOverlay):
         self.active = active
         self.step = 0
         self.doc.app.find_action("FrameEditMode").activate()
-        print("toggling IMproVision: {}".format(active))
 
     def paint(self, cr):
         gui.framewindow.FrameOverlay.paint(self, cr)
 
+        # TODO: consider angles
         base, _, _, top = self._display_corners
         base = (base[0] + self.step, base[1])
         top = (top[0] + self.step, top[1])
@@ -69,7 +64,6 @@ class IMproVision(gui.framewindow.FrameOverlay):
     def updateVision(self):
         while self.running:
             if self.active:
-                # TODO: consider angles and max gui speed
                 _, _, w, _ = self.doc.model.get_frame()
                 if w == 0:
                     self.sleeper.wait(timeout=0.01)
