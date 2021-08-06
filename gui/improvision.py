@@ -7,11 +7,11 @@ import lib.color
 from lib.pycompat import xrange
 from lib.pycompat import PY3
 
-import gui.framewindow
+import gui.overlays
 import gui.drawutils
 
 
-class IMproVision(gui.framewindow.FrameOverlay):
+class IMproVision(gui.overlays.Overlay):
     ## Class constants
 
 
@@ -25,13 +25,16 @@ class IMproVision(gui.framewindow.FrameOverlay):
     # scanline default time resolution in milliseconds
     SCANLINE_DEFAULT_TIME_RES_MS = 20
 
-    def __init__(self, doc):
+    def __init__(self, frame):
         """Constructor for improvision controller
 
         :param document: active document instance
         :type app: gui.document.Document
 
         """
+        gui.overlays.Overlay.__init__(self)
+
+        self.frame = frame
         self.angle = IMproVision.SCANLINE_DEFAULT_ANGLE
         self.speed = IMproVision.SCANLINE_DEFAULT_SPEED_HZ
         self.timeres = IMproVision.SCANLINE_DEFAULT_TIME_RES_MS / 1000
@@ -49,8 +52,6 @@ class IMproVision(gui.framewindow.FrameOverlay):
 
         self.active_row = []
 
-        gui.framewindow.FrameOverlay.__init__(self, doc)
-
     def trigger_one(self):
         self.continuous = False
         self.step = 0
@@ -67,19 +68,22 @@ class IMproVision(gui.framewindow.FrameOverlay):
             self.threads_started = True
         self.active = True
         self.sleeper.set()
-        if not self.doc.model.frame_enabled:
-            self.doc.app.find_action("FrameEditMode").activate()
+        if not self.frame.doc.model.frame_enabled:
+            self.frame.doc.app.find_action("FrameEditMode").activate()
 
     def stop(self):
         self.active = False
         self.step = 0
-        self.redraw(True)
+        self.redraw()
+
+    def redraw(self):
+        self.frame.doc.tdw.queue_draw()
 
     def paint(self, cr):
         if self.active:
 
             # TODO: consider angles
-            base, _, _, top = self._display_corners
+            base, _, _, top = self.frame._display_corners
             base = (base[0] + self.step, base[1])
             top = (top[0] + self.step, top[1])
             h = int(top[1] - base[1])
@@ -87,7 +91,7 @@ class IMproVision(gui.framewindow.FrameOverlay):
             if self.step_changed:
                 self.step_changed = False
 
-                surf = self.doc.tdw.renderer._new_image_surface_from_visible_area(int(base[0]), int(base[1]), 1, h, use_filter=False)
+                surf = self.frame.doc.tdw.renderer._new_image_surface_from_visible_area(int(base[0]), int(base[1]), 1, h, use_filter=False)
                 self.active_row = Gdk.pixbuf_get_from_surface(surf, 0, 0, 1, h)
 
                 self.data_ready.set()
@@ -102,13 +106,13 @@ class IMproVision(gui.framewindow.FrameOverlay):
             cr.new_path()
             cr.move_to(*base)
             cr.line_to(*top)
-            gui.drawutils.render_drop_shadow(cr, z=1, line_width=self.OUTLINE_WIDTH)
+            gui.drawutils.render_drop_shadow(cr, z=1, line_width=2)
 
     def updateVision(self):
         while True:
             if self.active:
                 self.sleeper.clear()
-                base, side, _, _ = self._display_corners
+                base, side, _, _ = self.frame._display_corners
                 w = int(side[0] - base[0])
                 if w == 0:
                     self.sleeper.wait(timeout=0.01)
@@ -123,7 +127,7 @@ class IMproVision(gui.framewindow.FrameOverlay):
                     else:
                         self.step += self.stepinc
                 self.step_changed = True
-                self.redraw(True)
+                self.redraw()
                 if interrupt:
                     self.active = False
                     continue
