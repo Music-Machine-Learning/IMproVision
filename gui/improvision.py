@@ -100,7 +100,9 @@ class IMproVision(gui.overlays.Overlay):
     def paint(self, cr):
         if self.active or self.single_step:
 
-            # TODO: consider angles
+            # TODO: consider rotation
+
+            # FIXME: calculate coords in image space
             base, _, _, top = self.frame._display_corners
             base = (base[0] + self.step, base[1])
             top = (top[0] + self.step, top[1])
@@ -115,6 +117,7 @@ class IMproVision(gui.overlays.Overlay):
 
                 self.data_ready.set()
 
+            # FIXME: translate image coords to screen space (this could address rotation as well)
             # draw scanline
             cr.new_path()
             cr.move_to(*base)
@@ -131,6 +134,7 @@ class IMproVision(gui.overlays.Overlay):
         while True:
             self.sleeper.clear()
             if self.active:
+                # FIXME: all coords must be in image space here
                 base, side, _, _ = self.frame._display_corners
                 w = int(side[0] - base[0])
                 if w == 0:
