@@ -41,6 +41,7 @@ class IMproVision(gui.overlays.Overlay):
         self.stepinc = 1
         self.step_changed = False
         self.continuous = False
+        self.single_step = False
 
         self.update_thread = threading.Thread(target=self.updateVision, daemon=True)
         self.play_thread = threading.Thread(target=self.processSound, daemon=True)
@@ -62,11 +63,17 @@ class IMproVision(gui.overlays.Overlay):
 
     def trigger_one(self, event):
         self.continuous = False
+        self.single_step = False
         self.step = 0
+        self._start()
+
+    def step_one(self, event):
+        self.single_step = True
         self._start()
 
     def loop(self, event):
         self.continuous = True
+        self.single_step = False
         self._start()
 
     def _start(self):
@@ -81,8 +88,8 @@ class IMproVision(gui.overlays.Overlay):
             self.app.find_action("FrameEditMode").activate()
 
     def stop(self, event):
-        self.init_frame()
         self.active = False
+        self.single_step = False
         self.step = 0
         self.redraw()
         self.sleeper.set()
@@ -91,7 +98,7 @@ class IMproVision(gui.overlays.Overlay):
         self.frame.doc.tdw.queue_draw()
 
     def paint(self, cr):
-        if self.active:
+        if self.active or self.single_step:
 
             # TODO: consider angles
             base, _, _, top = self.frame._display_corners
@@ -130,7 +137,10 @@ class IMproVision(gui.overlays.Overlay):
                     self.sleeper.wait(timeout=0.01)
                     continue
                 interrupt = False
-                if self.continuous:
+                if self.single_step:
+                    interrupt = True
+                    self.step = (self.step + 1) % w
+                elif self.continuous:
                     self.step = (self.step + self.stepinc) % w
                 else:
                     if self.step + self.stepinc > w:

@@ -220,6 +220,13 @@ Vocabulary
         </object>
       </child>
       <child>
+        <object class="GtkAction" id="IMproVisionStep">
+          <property name="label" translatable="yes" context="Menu→IMproVision (labels), Accel Editor (labels)" >Step</property>
+          <property name="tooltip" translatable="yes" context="Accel Editor (descriptions)">Read a single step</property>
+          <property name="icon-name">improvision-step-symbolic</property>
+        </object>
+      </child>
+      <child>
         <object class="GtkAction" id="IMproVisionLoop">
           <property name="label" translatable="yes" context="Menu→IMproVision (labels), Accel Editor (labels)" >Loop read</property>
           <property name="tooltip" translatable="yes" context="Accel Editor (descriptions)">Start reading loop cycle</property>

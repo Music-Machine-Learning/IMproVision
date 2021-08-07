@@ -40,6 +40,7 @@ class IMproVisionTool (SizedVBoxToolWidget):
             app, [
                 ("IMproVisionTrigger", None),
                 ("IMproVisionLoop", None),
+                ("IMproVisionStep", None),
                 ("IMproVisionStop", None),
             ])
 
@@ -94,6 +95,7 @@ class IMproVisionTool (SizedVBoxToolWidget):
 
         actions = {
             "IMproVisionTrigger": self._overlay.trigger_one,
+            "IMproVisionStep": self._overlay.step_one,
             "IMproVisionLoop": self._overlay.loop,
             "IMproVisionStop": self._overlay.stop,
         }

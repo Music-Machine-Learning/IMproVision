@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="16"
+   height="16"
+   fill="#bebebe"
+   version="1.1"
+   id="svg4"
+   sodipodi:docname="improvision-step-symbolic.svg"
+   inkscape:version="1.1 (c4e8f9ed74, 2021-05-24)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs8" />
+  <sodipodi:namedview
+     id="namedview6"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     showgrid="false"
+     inkscape:zoom="29.96365"
+     inkscape:cx="12.682033"
+     inkscape:cy="5.8237231"
+     inkscape:window-width="1920"
+     inkscape:window-height="1015"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg4" />
+  <path
+     d="m 5.5673546,3 v 11 0 L 12.567358,8.5 Z"
+     id="path2"
+     sodipodi:nodetypes="ccccc" />
+  <rect
+     style="fill:#bebebe;stroke-width:0.157405;stroke-linecap:round;stroke-miterlimit:10;paint-order:fill markers stroke"
+     id="rect843"
+     width="1.3121853"
+     height="11"
+     x="3.4496031"
+     y="3"
+     ry="0" />
+</svg>
