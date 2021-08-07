@@ -9,151 +9,13 @@ from lib.pycompat import PY3
 
 import gui.overlays
 import gui.drawutils
-
+from gui.framewindow import FrameOverlay
 
 from lib.gibindings import Gtk
 
 from .toolstack import SizedVBoxToolWidget, TOOL_WIDGET_NATURAL_HEIGHT_SHORT
 from lib.gettext import gettext as _
 from .widgets import inline_toolbar
-
-class IMproVisionTool (SizedVBoxToolWidget):
-    """Dockable panel showing options for IMproVision
-    """
-
-    SCANLINE_PREF_BEATS = "improvision-beats"
-    SCANLINE_MIN_BEATS = 1
-    SCANLINE_DEFAULT_BEATS = 4
-    SCANLINE_MAX_BEATS = 64
-
-    SCANLINE_PREF_BPM = "improvision-bpm"
-    SCANLINE_MIN_BPM = 1
-    SCANLINE_DEFAULT_BPM = 120
-    SCANLINE_MAX_BPM = 600
-
-    SCANLINE_PREF_TIMERES = "improvision-timeres"
-    SCANLINE_MIN_TIME_RES_MS = 10
-    SCANLINE_DEFAULT_TIME_RES_MS = 20
-    SCANLINE_MAX_TIME_RES_MS = 1000
-
-    ## Class constants
-
-    SIZED_VBOX_NATURAL_HEIGHT = TOOL_WIDGET_NATURAL_HEIGHT_SHORT
-
-    tool_widget_icon_name = "improvision-group-symbolic"
-    tool_widget_title = _("IMproVision")
-    tool_widget_description = _("IMproVision related configurations and activators")
-
-    __gtype_name__ = 'MyPaintIMproVisionTool'
-
-    def __init__(self):
-        SizedVBoxToolWidget.__init__(self)
-        from gui.application import get_app
-        app = get_app()
-        self.app = app
-        toolbar = inline_toolbar(
-            app, [
-                ("IMproVisionTrigger", None),
-                ("IMproVisionLoop", None),
-                ("IMproVisionStop", None),
-            ])
-
-        self.pack_start(toolbar, False, True, 0)
-
-        options = Gtk.Alignment.new(0.5, 0.5, 1.0, 1.0)
-        options.set_padding(0, 0, 0, 0)
-        options.set_border_width(3)
-
-        grid = Gtk.Grid()
-        row = 0
-
-        label = Gtk.Label()
-        label.set_text(_("BPM:"))
-        label.set_alignment(1.0, 0.5)
-        self._bpm_adj = Gtk.Adjustment(
-            value = self.SCANLINE_DEFAULT_BPM,
-            lower = self.SCANLINE_MIN_BPM,
-            upper = self.SCANLINE_MAX_BPM,
-            step_incr = 1,
-            page_incr = 10,
-        )
-        self._bpm_adj.connect("value-changed", self._bpm_changed_cb)
-        spinbut = Gtk.SpinButton()
-        spinbut.set_hexpand(True)
-        spinbut.set_adjustment(self._bpm_adj)
-        spinbut.set_numeric(True)
-        grid.attach(label, 0, row, 1, 1)
-        grid.attach(spinbut, 1, row, 1, 1)
-        row += 1
-
-        label = Gtk.Label()
-        label.set_text(_("Loop beats:"))
-        label.set_alignment(1.0, 0.5)
-        self._beats_adj = Gtk.Adjustment(
-            value = self.SCANLINE_DEFAULT_BEATS,
-            lower = self.SCANLINE_MIN_BEATS,
-            upper = self.SCANLINE_MAX_BEATS,
-            step_incr = 1,
-            page_incr = 10,
-        )
-        self._beats_adj.connect("value-changed", self._beats_changed_cb)
-        spinbut = Gtk.SpinButton()
-        spinbut.set_hexpand(True)
-        spinbut.set_adjustment(self._beats_adj)
-        spinbut.set_numeric(True)
-        grid.attach(label, 0, row, 1, 1)
-        grid.attach(spinbut, 1, row, 1, 1)
-        row += 1
-
-        label = Gtk.Label()
-        label.set_text(_("Time Resolution (ms):"))
-        label.set_alignment(1.0, 0.5)
-        self._timeres_adj = Gtk.Adjustment(
-            value = self.SCANLINE_DEFAULT_TIME_RES_MS,
-            lower = self.SCANLINE_MIN_TIME_RES_MS,
-            upper = self.SCANLINE_MAX_TIME_RES_MS,
-            step_incr = 1,
-            page_incr = 10,
-        )
-        self._timeres_adj.connect("value-changed", self._timeres_changed_cb)
-        spinbut = Gtk.SpinButton()
-        spinbut.set_hexpand(True)
-        spinbut.set_adjustment(self._timeres_adj)
-        spinbut.set_numeric(True)
-        grid.attach(label, 0, row, 1, 1)
-        grid.attach(spinbut, 1, row, 1, 1)
-        row += 1
-
-        options.add(grid)
-        options.show_all()
-
-        self.pack_start(options, True, True, 0)
-
-        self._bpm_changed_cb(self._bpm_adj)
-        self._beats_changed_cb(self._beats_adj)
-        self._timeres_changed_cb(self._timeres_adj)
-
-    @property
-    def bpm(self):
-        return int(self._bpm_adj.get_value())
-
-    @property
-    def beats(self):
-        return int(self._beats_adj.get_value())
-
-    @property
-    def timeres(self):
-        return int(self._timeres_adj.get_value())
-
-    def _bpm_changed_cb(self, adj):
-        self.app.preferences[self.SCANLINE_PREF_BPM] = self.bpm
-
-    def _beats_changed_cb(self, adj):
-        self.app.preferences[self.SCANLINE_PREF_BEATS] = self.beats
-
-    def _timeres_changed_cb(self, adj):
-        self.app.preferences[self.SCANLINE_PREF_TIMERES] = self.timeres
-
 
 class IMproVision(gui.overlays.Overlay):
     ## Class constants
@@ -162,7 +24,7 @@ class IMproVision(gui.overlays.Overlay):
     # rotation goes on counter clockwise
     SCANLINE_DEFAULT_ANGLE = 0
 
-    def __init__(self, frame):
+    def __init__(self, app):
         """Constructor for improvision controller
 
         :param document: active document instance
@@ -170,8 +32,9 @@ class IMproVision(gui.overlays.Overlay):
 
         """
         gui.overlays.Overlay.__init__(self)
+        self.app = app
+        self.frame = None
 
-        self.frame = frame
         self.angle = IMproVision.SCANLINE_DEFAULT_ANGLE
         self.active = False
         self.step = 0
@@ -187,12 +50,21 @@ class IMproVision(gui.overlays.Overlay):
 
         self.active_row = []
 
-    def trigger_one(self):
+    def _realize_cb(self, drawwindow):
+        frame = None
+        for o in self.app.doc.tdw.display_overlays:
+            if isinstance(o, FrameOverlay):
+                frame = o
+                break
+        assert frame is not None
+        self.frame = frame
+
+    def trigger_one(self, event):
         self.continuous = False
         self.step = 0
         self._start()
 
-    def loop(self):
+    def loop(self, event):
         self.continuous = True
         self._start()
 
@@ -204,9 +76,9 @@ class IMproVision(gui.overlays.Overlay):
         self.active = True
         self.sleeper.set()
         if not self.frame.doc.model.frame_enabled:
-            self.frame.doc.app.find_action("FrameEditMode").activate()
+            self.app.find_action("FrameEditMode").activate()
 
-    def stop(self):
+    def stop(self, event):
         self.active = False
         self.step = 0
         self.redraw()
@@ -268,9 +140,9 @@ class IMproVision(gui.overlays.Overlay):
                     self.active = False
                     continue
                 else:
-                    timeres = self.frame.app.preferences[IMproVisionTool.SCANLINE_PREF_TIMERES] / 1000
-                    bpm = self.frame.app.preferences[IMproVisionTool.SCANLINE_PREF_BPM]
-                    beats = self.frame.app.preferences[IMproVisionTool.SCANLINE_PREF_BEATS]
+                    timeres = self.app.preferences[IMproVisionTool.SCANLINE_PREF_TIMERES] / 1000
+                    bpm = self.app.preferences[IMproVisionTool.SCANLINE_PREF_BPM]
+                    beats = self.app.preferences[IMproVisionTool.SCANLINE_PREF_BEATS]
                     sleeptime = ((60 / bpm) * beats) / w
                     if sleeptime < timeres:
                         self.stepinc = math.ceil(timeres / sleeptime)
@@ -318,4 +190,127 @@ class IMproVision(gui.overlays.Overlay):
             print("step {}, got notes: {}, colors: {}".format(self.step, notes, colors))
             # TODO: process self.active_row
 
+
+class IMproVisionTool (SizedVBoxToolWidget):
+    """Dockable panel showing options for IMproVision
+    """
+
+    SCANLINE_PREF_BEATS = "improvision-beats"
+    SCANLINE_MIN_BEATS = 1
+    SCANLINE_DEFAULT_BEATS = 4
+    SCANLINE_MAX_BEATS = 64
+
+    SCANLINE_PREF_BPM = "improvision-bpm"
+    SCANLINE_MIN_BPM = 1
+    SCANLINE_DEFAULT_BPM = 120
+    SCANLINE_MAX_BPM = 600
+
+    SCANLINE_PREF_TIMERES = "improvision-timeres"
+    SCANLINE_MIN_TIME_RES_MS = 10
+    SCANLINE_DEFAULT_TIME_RES_MS = 20
+    SCANLINE_MAX_TIME_RES_MS = 1000
+
+    ## Class constants
+
+    SIZED_VBOX_NATURAL_HEIGHT = TOOL_WIDGET_NATURAL_HEIGHT_SHORT
+
+    tool_widget_icon_name = "improvision-group-symbolic"
+    tool_widget_title = _("IMproVision")
+    tool_widget_description = _("IMproVision related configurations and activators")
+
+    __gtype_name__ = 'MyPaintIMproVisionTool'
+
+    def __init__(self):
+        SizedVBoxToolWidget.__init__(self)
+        from gui.application import get_app
+        app = get_app()
+        self.app = app
+        toolbar = inline_toolbar(
+            app, [
+                ("IMproVisionTrigger", None),
+                ("IMproVisionLoop", None),
+                ("IMproVisionStop", None),
+            ])
+
+        self.pack_start(toolbar, False, True, 0)
+
+        options = Gtk.Alignment.new(0.5, 0.5, 1.0, 1.0)
+        options.set_padding(0, 0, 0, 0)
+        options.set_border_width(3)
+
+        grid = Gtk.Grid()
+        row = 0
+
+        def add_prop(self, label_text, propnam, grid, row, default, minv, maxv, step=1, page=1):
+            label = Gtk.Label()
+            label.set_text(_(label_text+":"))
+            label.set_alignment(1.0, 0.5)
+            adj = Gtk.Adjustment(value=default, lower=minv, upper=maxv, step_incr=step, page_incr=page)
+            cb = getattr(self, "_"+propnam+"_changed_cb")
+            adj.connect("value-changed", cb)
+            setattr(self, "_"+propnam+"_adj", adj)
+            spinbut = Gtk.SpinButton()
+            spinbut.set_hexpand(True)
+            spinbut.set_adjustment(adj)
+            spinbut.set_numeric(True)
+            grid.attach(label, 0, row, 1, 1)
+            grid.attach(spinbut, 1, row, 1, 1)
+            cb(adj)
+            return row+1
+
+        row = add_prop(
+            self, "BPM", "bpm", grid, row,
+            self.SCANLINE_DEFAULT_BPM, self.SCANLINE_MIN_BPM, self.SCANLINE_MAX_BPM,
+        )
+
+        row = add_prop(
+            self, "Loop beats", "beats", grid, row,
+            self.SCANLINE_DEFAULT_BEATS, self.SCANLINE_MIN_BEATS, self.SCANLINE_MAX_BEATS,
+        )
+
+        row = add_prop(
+            self, "Time Resolution (ms)", "timeres", grid, row,
+            self.SCANLINE_DEFAULT_TIME_RES_MS, self.SCANLINE_MIN_TIME_RES_MS, self.SCANLINE_MAX_TIME_RES_MS,
+        )
+
+        options.add(grid)
+        options.show_all()
+
+        self.pack_start(options, True, True, 0)
+
+        self._overlay = IMproVision(app)
+        self.app.doc.tdw.display_overlays.append(self._overlay)
+        self.app.doc.tdw.connect("realize", self._overlay._realize_cb)
+
+        actions = {
+            "IMproVisionTrigger": self._overlay.trigger_one,
+            "IMproVisionLoop": self._overlay.loop,
+            "IMproVisionStop": self._overlay.stop,
+        }
+
+        for a, cb in actions.items():
+            action = self.app.doc.action_group.get_action(a)
+            action.connect("activate", cb)
+
+
+    @property
+    def bpm(self):
+        return int(self._bpm_adj.get_value())
+
+    @property
+    def beats(self):
+        return int(self._beats_adj.get_value())
+
+    @property
+    def timeres(self):
+        return int(self._timeres_adj.get_value())
+
+    def _bpm_changed_cb(self, adj):
+        self.app.preferences[self.SCANLINE_PREF_BPM] = self.bpm
+
+    def _beats_changed_cb(self, adj):
+        self.app.preferences[self.SCANLINE_PREF_BEATS] = self.beats
+
+    def _timeres_changed_cb(self, adj):
+        self.app.preferences[self.SCANLINE_PREF_TIMERES] = self.timeres
 

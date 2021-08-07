@@ -217,7 +217,6 @@ Vocabulary
           <property name="label" translatable="yes" context="Menu→IMproVision (labels), Accel Editor (labels)" >Trigger read</property>
           <property name="tooltip" translatable="yes" context="Accel Editor (descriptions)">Trigger a single read cycle</property>
           <property name="icon-name">improvision-play-symbolic</property>
-          <signal name="activate" handler="improvision_read_trigger_cb"/>
         </object>
       </child>
       <child>
@@ -225,7 +224,6 @@ Vocabulary
           <property name="label" translatable="yes" context="Menu→IMproVision (labels), Accel Editor (labels)" >Loop read</property>
           <property name="tooltip" translatable="yes" context="Accel Editor (descriptions)">Start reading loop cycle</property>
           <property name="icon-name">improvision-loop-symbolic</property>
-          <signal name="activate" handler="improvision_read_loop_cb"/>
         </object>
       </child>
       <child>
@@ -233,7 +231,6 @@ Vocabulary
           <property name="label" translatable="yes" context="Menu→IMproVision (labels), Accel Editor (labels)" >Stop reading</property>
           <property name="tooltip" translatable="yes" context="Accel Editor (descriptions)">Stop image reading cycle</property>
           <property name="icon-name">improvision-stop-symbolic</property>
-          <signal name="activate" handler="improvision_read_stop_cb"/>
         </object>
       </child>
       <!-- Layer modes: defined in gui.layermodes -->

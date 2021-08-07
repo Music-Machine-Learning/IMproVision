@@ -50,7 +50,6 @@ from .overlays import LastPaintPosOverlay
 from .overlays import ScaleOverlay
 from .framewindow import FrameOverlay
 from .symmetry import SymmetryOverlay
-from .improvision import IMproVision
 import gui.tileddrawwidget
 import gui.displayfilter
 import gui.meta
@@ -153,11 +152,8 @@ class DrawWindow (Gtk.Window):
         doc = self.app.doc
         tdw = doc.tdw
         assert tdw is self.app.builder.get_object("app_canvas")
-        frame = FrameOverlay(doc)
-        tdw.display_overlays.append(frame)
+        tdw.display_overlays.append(FrameOverlay(doc))
         tdw.display_overlays.append(SymmetryOverlay(doc))
-        self.improvision = IMproVision(frame)
-        tdw.display_overlays.append(self.improvision)
         self.update_overlays()
         self._init_actions()
         kbm = self.app.kbm
