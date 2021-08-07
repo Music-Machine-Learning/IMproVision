@@ -48,7 +48,7 @@ class IMproVision(gui.overlays.Overlay):
         self.sleeper = threading.Event()
         self.data_ready = threading.Event()
 
-        self.active_row = []
+        self.active_row = None
 
     def init_frame(self):
         if self.frame is None:
@@ -102,8 +102,9 @@ class IMproVision(gui.overlays.Overlay):
             if self.step_changed:
                 self.step_changed = False
 
-                surf = self.frame.doc.tdw.renderer._new_image_surface_from_visible_area(int(base[0]), int(base[1]), 1, h, use_filter=False)
-                self.active_row = Gdk.pixbuf_get_from_surface(surf, 0, 0, 1, h)
+                self.active_row = self.app.doc.model.get_frame()
+                self.active_row[0] += self.step
+                self.active_row[2] = 1
 
                 self.data_ready.set()
 
@@ -159,26 +160,33 @@ class IMproVision(gui.overlays.Overlay):
             self.data_ready.wait()
             self.data_ready.clear()
 
+            # TODO: understand how to get actual color data..
+            # with layerstack.render_layer_as_pixbuf (lib.layer.tree.RootLayerStack) ?
 
-            n_channels = self.active_row.get_n_channels()
+            print("data ready, row: {}".format(self.active_row))
+
+            pixbuf = self.app.doc.model._layers.render_layer_as_pixbuf(self.app.doc.model._layers, self.active_row)
+
+            n_channels = pixbuf.get_n_channels()
             assert n_channels in (3, 4)
-            data = self.active_row.get_pixels()
+            data = pixbuf.get_pixels()
 
-            print("got color row: {}x{}, data size: {}".format(self.active_row.get_width(), self.active_row.get_height(), len(data)))
+            print("got color row: {}x{}, data size: {}".format(pixbuf.get_width(), pixbuf.get_height(), len(data)))
 
             notes = []
             window = 0
             windowsize = 0
             colors = []
-            for y in xrange(self.active_row.get_height()):
+            rowstride = pixbuf.get_rowstride()
+            for y in xrange(min(self.active_row[3], pixbuf.get_height())):
                 if PY3:
-                    col = lib.color.RGBColor(data[y + n_channels]/255,
-                                             data[y + n_channels + 1]/255,
-                                             data[y + n_channels + 2]/255)
+                    col = lib.color.RGBColor(data[y*rowstride + n_channels]/255,
+                                             data[y*rowstride + n_channels + 1]/255,
+                                             data[y*rowstride + n_channels + 2]/255)
                 else:
-                    col = lib.color.RGBColor(ord(data[y + n_channels])/255,
-                                             ord(data[y + n_channels + 1])/255,
-                                             ord(data[y + n_channels + 2])/255)
+                    col = lib.color.RGBColor(ord(data[y*rowstride + n_channels])/255,
+                                             ord(data[y*rowstride + n_channels + 1])/255,
+                                             ord(data[y*rowstride + n_channels + 2])/255)
 
                 colors.append((col.get_luma(), col))
                 if col.get_luma() < 0.1:
@@ -191,4 +199,4 @@ class IMproVision(gui.overlays.Overlay):
                         windowsize = 0
 
             print("step {}, got notes: {}, colors: {}".format(self.step, notes, colors))
-            # TODO: process self.active_row
+            # TODO: process pixbuf
