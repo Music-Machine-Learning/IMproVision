@@ -37,7 +37,7 @@ class IMproVision(gui.overlays.Overlay):
 
         self.angle = IMproVision.SCANLINE_DEFAULT_ANGLE
         self.active = False
-        self.step = 0
+        self.step = -1
         self.stepinc = 1
         self.step_changed = False
         self.continuous = False
@@ -64,7 +64,7 @@ class IMproVision(gui.overlays.Overlay):
     def trigger_one(self, event):
         self.continuous = False
         self.single_step = False
-        self.step = 0
+        self.step = -1
         self._start()
 
     def step_one(self, event):
@@ -90,7 +90,7 @@ class IMproVision(gui.overlays.Overlay):
     def stop(self, event):
         self.active = False
         self.single_step = False
-        self.step = 0
+        self.step = -1
         self.redraw()
         self.sleeper.set()
 
@@ -130,7 +130,6 @@ class IMproVision(gui.overlays.Overlay):
             if self.active:
                 frame = self.app.doc.model.get_frame()
                 w = frame[2]
-                print("current frame: {}".format(frame))
                 if w == 0:
                     self.sleeper.wait(timeout=0.01)
                     continue
@@ -165,46 +164,48 @@ class IMproVision(gui.overlays.Overlay):
 
     def processSound(self):
         while True:
-            self.data_ready.wait()
-            self.data_ready.clear()
+            try:
+                self.data_ready.wait()
+                self.data_ready.clear()
 
-            # TODO: understand how to get actual color data..
-            # with layerstack.render_layer_as_pixbuf (lib.layer.tree.RootLayerStack) ?
+                # horrible hack, the render_layer_as_pixbuf reads one pixel ahead, so we bring
+                # the rendering window back before getting color data
+                actual_row = self.active_row[:]
+                actual_row[0] -= 1
 
-            print("data ready, row: {}".format(self.active_row))
+                pixbuf = self.app.doc.model._layers.render_layer_as_pixbuf(self.app.doc.model._layers, actual_row)
 
-            pixbuf = self.app.doc.model._layers.render_layer_as_pixbuf(self.app.doc.model._layers, self.active_row)
+                n_channels = pixbuf.get_n_channels()
+                assert n_channels in (3, 4)
+                data = pixbuf.get_pixels()
 
-            n_channels = pixbuf.get_n_channels()
-            assert n_channels in (3, 4)
-            data = pixbuf.get_pixels()
+                notes = []
+                window = 0
+                windowsize = 0
+                colors = []
+                rowstride = pixbuf.get_rowstride()
+                for y in xrange(min(self.active_row[3], pixbuf.get_height())):
+                    if PY3:
+                        col = lib.color.RGBColor(data[y*rowstride + n_channels]/255,
+                                                 data[y*rowstride + n_channels + 1]/255,
+                                                 data[y*rowstride + n_channels + 2]/255)
+                    else:
+                        col = lib.color.RGBColor(ord(data[y*rowstride + n_channels])/255,
+                                                 ord(data[y*rowstride + n_channels + 1])/255,
+                                                 ord(data[y*rowstride + n_channels + 2])/255)
 
-            print("got color row: {}x{}, data size: {}".format(pixbuf.get_width(), pixbuf.get_height(), len(data)))
+                    colors.append((col.get_luma(), col))
+                    if col.get_luma() < 0.1:
+                        window += y
+                        windowsize += 1
+                    else:
+                        if windowsize > 0:
+                            notes.append(self.active_row[3] - int(window / windowsize))
+                            window = 0
+                            windowsize = 0
 
-            notes = []
-            window = 0
-            windowsize = 0
-            colors = []
-            rowstride = pixbuf.get_rowstride()
-            for y in xrange(min(self.active_row[3], pixbuf.get_height())):
-                if PY3:
-                    col = lib.color.RGBColor(data[y*rowstride + n_channels]/255,
-                                             data[y*rowstride + n_channels + 1]/255,
-                                             data[y*rowstride + n_channels + 2]/255)
-                else:
-                    col = lib.color.RGBColor(ord(data[y*rowstride + n_channels])/255,
-                                             ord(data[y*rowstride + n_channels + 1])/255,
-                                             ord(data[y*rowstride + n_channels + 2])/255)
+                print("step {}, got notes: {}, colors: {}".format(self.step, notes, colors))
+                # TODO: process pixbuf
 
-                colors.append((col.get_luma(), col))
-                if col.get_luma() < 0.1:
-                    window += y
-                    windowsize += 1
-                else:
-                    if windowsize > 0:
-                        notes.append(int(window / windowsize))
-                        window = 0
-                        windowsize = 0
-
-            print("step {}, got notes: {}, colors: {}".format(self.step, notes, colors))
-            # TODO: process pixbuf
+            except Exception as e:
+                print("error getting color data: {}".format(e))
