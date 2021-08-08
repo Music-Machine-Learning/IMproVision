@@ -1,7 +1,6 @@
 import threading
 import math
 
-from lib.gibindings import Gdk
 import lib.color
 
 from lib.pycompat import xrange
@@ -10,7 +9,7 @@ from lib.pycompat import PY3
 import gui.overlays
 import gui.drawutils
 from gui.framewindow import FrameOverlay
-
+from gui import improvisionconsumer
 
 class IMproVision(gui.overlays.Overlay):
     ## Class constants
@@ -49,6 +48,10 @@ class IMproVision(gui.overlays.Overlay):
         self.sleeper = threading.Event()
         self.data_ready = threading.Event()
 
+        self.consumers = [
+            improvisionconsumer.IMproVisionLumaConsumer(0, 0.1)
+        ]
+
         self.active_row = None
 
     def init_frame(self):
@@ -81,6 +84,8 @@ class IMproVision(gui.overlays.Overlay):
         if not self.threads_started:
             self.update_thread.start()
             self.play_thread.start()
+            for c in self.consumers:
+                c.start()
             self.threads_started = True
         self.active = True
         self.sleeper.set()
@@ -179,9 +184,6 @@ class IMproVision(gui.overlays.Overlay):
                 assert n_channels in (3, 4)
                 data = pixbuf.get_pixels()
 
-                notes = []
-                window = 0
-                windowsize = 0
                 colors = []
                 rowstride = pixbuf.get_rowstride()
                 for y in xrange(min(self.active_row[3], pixbuf.get_height())):
@@ -193,19 +195,11 @@ class IMproVision(gui.overlays.Overlay):
                         col = lib.color.RGBColor(ord(data[y*rowstride + n_channels])/255,
                                                  ord(data[y*rowstride + n_channels + 1])/255,
                                                  ord(data[y*rowstride + n_channels + 2])/255)
+                    colors.append(col)
 
-                    colors.append((col.get_luma(), col))
-                    if col.get_luma() < 0.1:
-                        window += y
-                        windowsize += 1
-                    else:
-                        if windowsize > 0:
-                            notes.append(self.active_row[3] - int(window / windowsize))
-                            window = 0
-                            windowsize = 0
-
-                print("step {}, got notes: {}, colors: {}".format(self.step, notes, colors))
-                # TODO: process pixbuf
+                #print("step {}, colors: {}".format(self.step, colors))
+                for c in self.consumers:
+                    c.data_ready(colors)
 
             except Exception as e:
                 print("error getting color data: {}".format(e))
