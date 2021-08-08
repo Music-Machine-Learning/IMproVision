@@ -100,24 +100,18 @@ class IMproVision(gui.overlays.Overlay):
     def paint(self, cr):
         if self.active or self.single_step:
 
-            # TODO: consider rotation
-
-            # FIXME: calculate coords in image space
-            base, _, _, top = self.frame._display_corners
-            base = (base[0] + self.step, base[1])
-            top = (top[0] + self.step, top[1])
-            h = int(top[1] - base[1])
-
             if self.step_changed:
                 self.step_changed = False
 
-                self.active_row = self.app.doc.model.get_frame()
+                self.active_row = self.app.doc.model.frame[:]
                 self.active_row[0] += self.step
                 self.active_row[2] = 1
 
                 self.data_ready.set()
 
-            # FIXME: translate image coords to screen space (this could address rotation as well)
+            base = self.app.doc.tdw.model_to_display(self.active_row[0], self.active_row[1])
+            top = self.app.doc.tdw.model_to_display(self.active_row[0], self.active_row[1] + self.active_row[3])
+
             # draw scanline
             cr.new_path()
             cr.move_to(*base)
@@ -134,9 +128,9 @@ class IMproVision(gui.overlays.Overlay):
         while True:
             self.sleeper.clear()
             if self.active:
-                # FIXME: all coords must be in image space here
-                base, side, _, _ = self.frame._display_corners
-                w = int(side[0] - base[0])
+                frame = self.app.doc.model.get_frame()
+                w = frame[2]
+                print("current frame: {}".format(frame))
                 if w == 0:
                     self.sleeper.wait(timeout=0.01)
                     continue
