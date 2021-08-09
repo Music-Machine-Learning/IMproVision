@@ -4,9 +4,9 @@ from .player import Note
 
 class NoteRenderer:
     def render(self, vals: [(int, int)]) -> [Note]:
-        notes = []
+        notes = set()
         for val, maxv in vals:
-            notes.append(self.render_note(val, maxv))
+            notes.add(self.render_note(val, maxv))
         return notes
 
     def render_note(self, val: int, max_val: int) -> Note:

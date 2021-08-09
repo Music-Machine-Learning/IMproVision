@@ -12,6 +12,9 @@ class Note:
     def __repr__(self):
         return str(self)
 
+    def __hash__(self):
+        return hash((self.note, self.bend, self.noteon))
+
     def __eq__(self, other):
         return self.note == other.note and self.bend == other.bend and self.noteon == other.noteon
 
@@ -35,29 +38,24 @@ class AbsoluteNote(Note):
 
 class NotePlayer:
     def __init__(self):
-        self.active_notes = []
+        self.active_notes = set()
 
-    def play(self, notes: [Note]):
-        play_notes = []
-        stop_notes = self.active_notes[:]
-        for n in notes:
-            if n in self.active_notes:
-                try:
-                    stop_notes.remove(n)
-                except:
-                    pass
-            else:
-                play_notes.append(n)
+    def __del__(self):
+        self.stop()
 
-        self.notes_off(stop_notes)
-        self.active_notes = [n for n in self.active_notes if n not in stop_notes]
+    def play(self, notes: set[Note]):
+        stop_notes = self.active_notes - notes
+        play_notes = notes - self.active_notes
 
         self.notes_on(play_notes)
-        self.active_notes.extend(play_notes)
+        self.notes_off(stop_notes)
+
+        self.active_notes -= stop_notes
+        self.active_notes |= play_notes
 
     def stop(self):
         self.notes_off(self.active_notes)
-        self.active_notes = []
+        self.active_notes = set()
 
     def notes_on(self, notes: [Note]):
         raise NotImplementedError
@@ -68,10 +66,10 @@ class NotePlayer:
 
 class LogPlayer(NotePlayer):
     def notes_on(self, notes: [Note]):
-        print("notes on: {}".format(notes))
+        print("notes on: {}, active_notes: {}".format(notes, self.active_notes))
 
     def notes_off(self, notes: [Note]):
-        print("notes off: {}".format(notes))
+        print("notes off: {}, active_notes: {}".format(notes, self.active_notes))
 
 
 class MidiPlayer(NotePlayer):
