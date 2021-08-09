@@ -103,6 +103,8 @@ class IMproVision(gui.overlays.Overlay):
         self.step = -1
         self.redraw()
         self.sleeper.set()
+        for c in self.consumers:
+            c.player.stop()
 
     def redraw(self):
         self.frame.doc.tdw.queue_draw()

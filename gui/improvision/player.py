@@ -53,7 +53,7 @@ class NotePlayer:
         self.active_notes.extend(play_notes)
 
     def stop(self):
-        self.note_off(self.active_notes)
+        self.notes_off(self.active_notes)
         self.active_notes = []
 
     def notes_on(self, notes: [Note]):
