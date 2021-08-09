@@ -105,7 +105,7 @@ class IMproVision(gui.overlays.Overlay):
         self.redraw()
         self.sleeper.set()
         for c in self.consumers:
-            c.player.stop()
+            c.stop()
 
     def redraw(self):
         self.frame.doc.tdw.queue_draw()

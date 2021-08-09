@@ -22,6 +22,10 @@ class IMproVisionConsumer(threading.Thread):
             for p in self.players:
                 p.play(notes)
 
+    def stop(self):
+        for p in self.players:
+            p.stop()
+
     def data_ready(self, color_column):
         self.queue.put(color_column, False)
 
