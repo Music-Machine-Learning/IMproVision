@@ -53,7 +53,7 @@ class IMproVision(gui.overlays.Overlay):
         # XXX: setup note consumers here
         self.consumers = [
             improvisionconsumer.IMproVisionLumaConsumer(
-                noterenderer.DiatonicRenderer(Note(45), 3, [Note(0), Note(3), Note(5), Note(7), Note(10)]),
+                noterenderer.DiatonicRenderer(Note(45), 3, noterenderer.DiatonicRenderer.MinorPentatonic),
                 [player.MidiPlayer()],
                 0, 0.1)
         ]

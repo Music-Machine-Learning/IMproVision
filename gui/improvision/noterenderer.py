@@ -25,6 +25,12 @@ class ChromaticRenderer(NoteRenderer):
 
 
 class DiatonicRenderer(NoteRenderer):
+    MinorPentatonic = [Note(0), Note(3), Note(5), Note(7), Note(10)]
+    MajorPentatonic = [Note(0), Note(2), Note(4), Note(7), Note(9)]
+    Major = [Note(0), Note(2), Note(4), Note(5), Note(7), Note(9), Note(11)]
+    MinorNatural = [Note(0), Note(2), Note(3), Note(5), Note(7), Note(8), Note(10)]
+    MinorHarmonic = [Note(0), Note(2), Note(3), Note(5), Note(7), Note(8), Note(11)]
+
     def __init__(self, fundamental: Note, octaves_range: int, scale_notes: [Note]):
         self.fundamental = fundamental
         self.range = octaves_range
