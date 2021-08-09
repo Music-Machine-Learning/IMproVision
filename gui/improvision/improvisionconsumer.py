@@ -5,19 +5,22 @@ from .noterenderer import NoteRenderer
 from .player import NotePlayer
 
 class IMproVisionConsumer(threading.Thread):
-    def __init__(self, renderer: NoteRenderer, player: NotePlayer):
+    def __init__(self, renderer: NoteRenderer, players: [NotePlayer]):
         threading.Thread.__init__(self, daemon=True)
         self.renderer = renderer
-        self.player = player
+        if type(players) is list:
+            self.players = players
+        else:
+            self.players = [players]
         self.queue = queue.SimpleQueue()
 
     def run(self) -> None:
         while True:
-            self.player.play(
-                self.renderer.render(
-                    self.process_data(self.queue.get(True, None))
-                )
+            notes = self.renderer.render(
+                self.process_data(self.queue.get(True, None))
             )
+            for p in self.players:
+                p.play(notes)
 
     def data_ready(self, color_column):
         self.queue.put(color_column, False)

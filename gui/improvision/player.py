@@ -1,9 +1,9 @@
 from pygame import midi
 
 class Note:
-    def __init__(self, note, bend, noteon):
-        self.note = note
-        self.bend = bend
+    def __init__(self, note, bend=0, noteon=True):
+        self.note = int(note)
+        self.bend = int(bend)
         self.noteon = noteon
 
     def __str__(self):
@@ -42,7 +42,10 @@ class NotePlayer:
         stop_notes = self.active_notes[:]
         for n in notes:
             if n in self.active_notes:
-                stop_notes.remove(n)
+                try:
+                    stop_notes.remove(n)
+                except:
+                    pass
             else:
                 play_notes.append(n)
 

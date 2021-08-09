@@ -10,6 +10,7 @@ import gui.overlays
 import gui.drawutils
 from gui.framewindow import FrameOverlay
 from . import improvisionconsumer, noterenderer, player
+from .player import Note
 
 
 class IMproVision(gui.overlays.Overlay):
@@ -52,8 +53,8 @@ class IMproVision(gui.overlays.Overlay):
         # XXX: setup note consumers here
         self.consumers = [
             improvisionconsumer.IMproVisionLumaConsumer(
-                noterenderer.ChromaticRenderer(43, 77),
-                player.MidiPlayer(),
+                noterenderer.DiatonicRenderer(Note(45), 3, [Note(0), Note(3), Note(5), Note(7), Note(10)]),
+                [player.MidiPlayer()],
                 0, 0.1)
         ]
 
