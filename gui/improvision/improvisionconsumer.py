@@ -1,25 +1,35 @@
 import threading
 import queue
 
+from .noterenderer import NoteRenderer
+from .player import NotePlayer
+
 class IMproVisionConsumer(threading.Thread):
-    def __init__(self):
+    def __init__(self, renderer: NoteRenderer, player: NotePlayer):
         threading.Thread.__init__(self, daemon=True)
+        self.renderer = renderer
+        self.player = player
         self.queue = queue.SimpleQueue()
 
     def run(self) -> None:
         while True:
-            self.process_data(self.queue.get(True, None))
+            self.player.play(
+                self.renderer.render(
+                    self.process_data(self.queue.get(True, None))
+                )
+            )
 
     def data_ready(self, color_column):
         self.queue.put(color_column, False)
 
-    def process_data(self, color_column):
+    # subclasses must implement this method
+    def process_data(self, color_column) -> [(int, int)]:
         raise NotImplementedError
 
 
 class IMproVisionLumaConsumer(IMproVisionConsumer):
-    def __init__(self, minluma, maxluma):
-        IMproVisionConsumer.__init__(self)
+    def __init__(self, renderer: NoteRenderer, player: NotePlayer, minluma: float, maxluma: float):
+        IMproVisionConsumer.__init__(self, renderer, player)
         self.minluma = minluma
         self.maxluma = maxluma
 
@@ -27,15 +37,17 @@ class IMproVisionLumaConsumer(IMproVisionConsumer):
         notes = []
         window = 0
         windowsize = 0
-        for y in range(len(color_column)):
+        maxv = len(color_column)
+        for y in range(maxv):
             luma = color_column[y].get_luma()
             if self.minluma <= luma <= self.maxluma:
                 window += y
                 windowsize += 1
             else:
                 if windowsize > 0:
-                    notes.append(len(color_column) - int(window / windowsize))
+                    notes.append((maxv - int(window / windowsize), maxv))
                     window = 0
                     windowsize = 0
 
-        print("notes: {}".format(notes))
+        return notes
+        #print("notes: {}".format(notes))

@@ -1,8 +1,8 @@
 from lib.gibindings import Gtk
 
-from .toolstack import SizedVBoxToolWidget, TOOL_WIDGET_NATURAL_HEIGHT_SHORT
+from gui.toolstack import SizedVBoxToolWidget, TOOL_WIDGET_NATURAL_HEIGHT_SHORT
 from lib.gettext import gettext as _
-from .widgets import inline_toolbar
+from gui.widgets import inline_toolbar
 from .improvision import IMproVision
 
 class IMproVisionTool (SizedVBoxToolWidget):

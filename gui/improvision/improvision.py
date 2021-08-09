@@ -9,7 +9,8 @@ from lib.pycompat import PY3
 import gui.overlays
 import gui.drawutils
 from gui.framewindow import FrameOverlay
-from gui import improvisionconsumer
+from . import improvisionconsumer, noterenderer, player
+
 
 class IMproVision(gui.overlays.Overlay):
     ## Class constants
@@ -49,7 +50,10 @@ class IMproVision(gui.overlays.Overlay):
         self.data_ready = threading.Event()
 
         self.consumers = [
-            improvisionconsumer.IMproVisionLumaConsumer(0, 0.1)
+            improvisionconsumer.IMproVisionLumaConsumer(
+                noterenderer.ChromaticRenderer(43, 77),
+                player.LogPlayer(),
+                0, 0.1)
         ]
 
         self.active_row = None
