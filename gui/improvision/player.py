@@ -47,8 +47,10 @@ class NotePlayer:
         stop_notes = self.active_notes - notes
         play_notes = notes - self.active_notes
 
-        self.notes_on(play_notes)
-        self.notes_off(stop_notes)
+        if len(play_notes) > 0:
+            self.notes_on(play_notes)
+        if len(stop_notes) > 0:
+            self.notes_off(stop_notes)
 
         self.active_notes -= stop_notes
         self.active_notes |= play_notes
@@ -57,18 +59,18 @@ class NotePlayer:
         self.notes_off(self.active_notes)
         self.active_notes = set()
 
-    def notes_on(self, notes: [Note]):
+    def notes_on(self, notes: set[Note]):
         raise NotImplementedError
 
-    def notes_off(self, notes: [Note]):
+    def notes_off(self, notes: set[Note]):
         raise NotImplementedError
 
 
 class LogPlayer(NotePlayer):
-    def notes_on(self, notes: [Note]):
+    def notes_on(self, notes: set[Note]):
         print("notes on: {}, active_notes: {}".format(notes, self.active_notes))
 
-    def notes_off(self, notes: [Note]):
+    def notes_off(self, notes: set[Note]):
         print("notes off: {}, active_notes: {}".format(notes, self.active_notes))
 
 
@@ -83,10 +85,28 @@ class MidiPlayer(NotePlayer):
         else:
             self.output = midi.Output(device_id)
 
-    def notes_off(self, notes: [Note]):
+    def notes_on(self, notes: set[Note]):
+        for n in notes:
+            self.output.note_on(n.note, velocity=127, channel=self.channel)
+
+    def notes_off(self, notes: set[Note]):
         for n in notes:
             self.output.note_off(n.note, velocity=0, channel=self.channel)
 
-    def notes_on(self, notes: [Note]):
-        for n in notes:
-            self.output.note_on(n.note, velocity=127, channel=self.channel)
+
+class MonoMidiPlayer(MidiPlayer):
+    def __init__(self, device_id=None, channel=0, priority_high=False):
+        super().__init__(device_id, channel)
+        self.priority_high = priority_high
+
+    def play(self, notes: set[Note]):
+        if len(notes) > 0:
+            pn = set()
+            if self.priority_high:
+                pn.add(max(notes))
+            else:
+                pn.add(min(notes))
+        else:
+            pn = notes
+        super().play(pn)
+

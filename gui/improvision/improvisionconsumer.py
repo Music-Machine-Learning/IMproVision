@@ -4,6 +4,7 @@ import queue
 from .noterenderer import NoteRenderer
 from .player import NotePlayer
 
+
 class IMproVisionConsumer(threading.Thread):
     def __init__(self, renderer: NoteRenderer, players: [NotePlayer]):
         threading.Thread.__init__(self, daemon=True)
@@ -57,4 +58,3 @@ class IMproVisionLumaConsumer(IMproVisionConsumer):
                     windowsize = 0
 
         return notes
-        #print("notes: {}".format(notes))
