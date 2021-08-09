@@ -34,25 +34,8 @@ class AbsoluteNote(Note):
 
 
 class NotePlayer:
-    def play(self, notes: [Note]):
-        raise NotImplementedError
-
-
-class LogPlayer(NotePlayer):
-    def play(self, notes: [Note]):
-        print(notes)
-
-
-class MidiPlayer(NotePlayer):
-    def __init__(self, device_id=None, channel=0):
+    def __init__(self):
         self.active_notes = []
-        if not midi.get_init():
-            midi.init()
-        self.channel = channel
-        if device_id is None:
-            self.output = midi.Output(midi.get_default_output_id())
-        else:
-            self.output = midi.Output(device_id)
 
     def play(self, notes: [Note]):
         play_notes = []
@@ -63,10 +46,46 @@ class MidiPlayer(NotePlayer):
             else:
                 play_notes.append(n)
 
-        for n in stop_notes:
-            self.output.note_off(n.note, velocity=0, channel=self.channel)
-            self.active_notes.remove(n)
+        self.notes_off(stop_notes)
+        self.active_notes = [n for n in self.active_notes if n not in stop_notes]
 
-        for n in play_notes:
+        self.notes_on(play_notes)
+        self.active_notes.extend(play_notes)
+
+    def stop(self):
+        self.note_off(self.active_notes)
+        self.active_notes = []
+
+    def notes_on(self, notes: [Note]):
+        raise NotImplementedError
+
+    def notes_off(self, notes: [Note]):
+        raise NotImplementedError
+
+
+class LogPlayer(NotePlayer):
+    def notes_on(self, notes: [Note]):
+        print("notes on: {}".format(notes))
+
+    def notes_off(self, notes: [Note]):
+        print("notes off: {}".format(notes))
+
+
+class MidiPlayer(NotePlayer):
+    def __init__(self, device_id=None, channel=0):
+        NotePlayer.__init__(self)
+        if not midi.get_init():
+            midi.init()
+        self.channel = channel
+        if device_id is None:
+            self.output = midi.Output(midi.get_default_output_id())
+        else:
+            self.output = midi.Output(device_id)
+
+    def notes_off(self, notes: [Note]):
+        for n in notes:
+            self.output.note_off(n.note, velocity=0, channel=self.channel)
+
+    def notes_on(self, notes: [Note]):
+        for n in notes:
             self.output.note_on(n.note, velocity=127, channel=self.channel)
-            self.active_notes.append(n)
