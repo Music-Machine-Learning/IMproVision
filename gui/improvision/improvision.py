@@ -108,7 +108,7 @@ class IMproVision(gui.overlays.Overlay):
             c.stop()
 
     def redraw(self):
-        self.frame.doc.tdw.queue_draw()
+        self.app.doc.tdw.queue_draw()
 
     def paint(self, cr):
         if self.active or self.single_step:
