@@ -49,10 +49,11 @@ class IMproVision(gui.overlays.Overlay):
         self.sleeper = threading.Event()
         self.data_ready = threading.Event()
 
+        # XXX: setup note consumers here
         self.consumers = [
             improvisionconsumer.IMproVisionLumaConsumer(
                 noterenderer.ChromaticRenderer(43, 77),
-                player.LogPlayer(),
+                player.MidiPlayer(),
                 0, 0.1)
         ]
 
