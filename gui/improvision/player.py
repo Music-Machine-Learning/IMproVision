@@ -56,7 +56,7 @@ class MidiPlayer(NotePlayer):
 
     def play(self, notes: [Note]):
         play_notes = []
-        stop_notes = self.active_notes
+        stop_notes = self.active_notes[:]
         for n in notes:
             if n in self.active_notes:
                 stop_notes.remove(n)
@@ -65,8 +65,8 @@ class MidiPlayer(NotePlayer):
 
         for n in stop_notes:
             self.output.note_off(n.note, velocity=0, channel=self.channel)
+            self.active_notes.remove(n)
 
         for n in play_notes:
             self.output.note_on(n.note, velocity=127, channel=self.channel)
-
-        self.active_notes = play_notes
+            self.active_notes.append(n)
