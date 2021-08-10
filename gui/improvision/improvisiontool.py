@@ -4,8 +4,9 @@ from gui.toolstack import SizedVBoxToolWidget, TOOL_WIDGET_NATURAL_HEIGHT_SHORT
 from lib.gettext import gettext as _
 from gui.widgets import inline_toolbar
 from .improvision import IMproVision
+from .configurable import Configurable, Configuration
 
-class IMproVisionTool (SizedVBoxToolWidget):
+class IMproVisionTool (SizedVBoxToolWidget, Configurable):
     """Dockable panel showing options for IMproVision
     """
 
@@ -36,6 +37,26 @@ class IMproVisionTool (SizedVBoxToolWidget):
         from gui.application import get_app
         app = get_app()
         self.app = app
+
+        self._overlay = IMproVision(app)
+        self.app.doc.tdw.display_overlays.append(self._overlay)
+
+        Configurable.__init__(
+            self, "IMproVision", {
+                "bpm": Configuration(
+                    "BPM", IMproVision.SCANLINE_PREF_BPM, app, Gtk.SpinButton,
+                    self.SCANLINE_DEFAULT_BPM, self.SCANLINE_MIN_BPM, self.SCANLINE_MAX_BPM,
+                ),
+                "beats": Configuration(
+                    "Loop beats", IMproVision.SCANLINE_PREF_BEATS, app, Gtk.SpinButton,
+                    self.SCANLINE_DEFAULT_BEATS, self.SCANLINE_MIN_BEATS, self.SCANLINE_MAX_BEATS,
+                ),
+                "timeres": Configuration(
+                    "Time Resolution (ms)", IMproVision.SCANLINE_PREF_TIMERES, app, Gtk.SpinButton,
+                    self.SCANLINE_DEFAULT_TIME_RES_MS, self.SCANLINE_MIN_TIME_RES_MS, self.SCANLINE_MAX_TIME_RES_MS,
+                ),
+            })
+
         toolbar = inline_toolbar(
             app, [
                 ("IMproVisionTrigger", None),
@@ -53,50 +74,15 @@ class IMproVisionTool (SizedVBoxToolWidget):
         grid = Gtk.Grid()
         row = 0
 
-        def add_prop(self, label_text, propnam, grid, row, default, minv, maxv, prefname, step=1, page=1):
-            label = Gtk.Label()
-            label.set_text(_(label_text+":"))
-            label.set_alignment(1.0, 0.5)
-            if prefname not in self.app.preferences:
-                self.app.preferences[prefname] = default
-            adj = Gtk.Adjustment(value=self.app.preferences[prefname], lower=minv, upper=maxv, step_incr=step, page_incr=page)
-            def cb(adj):
-                self.app.preferences[prefname] = adj.get_value()
-            adj.connect("value-changed", cb)
-            setattr(self, "_"+propnam+"_adj", adj)
-            spinbut = Gtk.SpinButton()
-            spinbut.set_hexpand(True)
-            spinbut.set_adjustment(adj)
-            spinbut.set_numeric(True)
-            grid.attach(label, 0, row, 1, 1)
-            grid.attach(spinbut, 1, row, 1, 1)
-            return row+1
+        row = self.add_to_grid(grid, row)
 
-        row = add_prop(
-            self, "BPM", "bpm", grid, row,
-            self.SCANLINE_DEFAULT_BPM, self.SCANLINE_MIN_BPM, self.SCANLINE_MAX_BPM,
-            IMproVision.SCANLINE_PREF_BPM,
-        )
-
-        row = add_prop(
-            self, "Loop beats", "beats", grid, row,
-            self.SCANLINE_DEFAULT_BEATS, self.SCANLINE_MIN_BEATS, self.SCANLINE_MAX_BEATS,
-            IMproVision.SCANLINE_PREF_BEATS,
-        )
-
-        row = add_prop(
-            self, "Time Resolution (ms)", "timeres", grid, row,
-            self.SCANLINE_DEFAULT_TIME_RES_MS, self.SCANLINE_MIN_TIME_RES_MS, self.SCANLINE_MAX_TIME_RES_MS,
-            IMproVision.SCANLINE_PREF_TIMERES,
-        )
+        for c in self._overlay.consumers:
+            row = c.add_to_grid(grid, row)
 
         options.add(grid)
         options.show_all()
 
         self.pack_start(options, True, True, 0)
-
-        self._overlay = IMproVision(app)
-        self.app.doc.tdw.display_overlays.append(self._overlay)
 
         actions = {
             "IMproVisionTrigger": self._overlay.trigger_one,

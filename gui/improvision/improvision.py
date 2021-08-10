@@ -55,7 +55,7 @@ class IMproVision(gui.overlays.Overlay):
             improvisionconsumer.IMproVisionLumaConsumer(
                 noterenderer.DiatonicRenderer(Note(45), 3, noterenderer.DiatonicRenderer.MinorPentatonic),
                 [player.MidiPlayer()],
-                0, 0.1)
+                self.app, 0, 0.1)
         ]
 
         self.active_row = None
