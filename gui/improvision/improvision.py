@@ -11,9 +11,10 @@ import gui.drawutils
 from gui.framewindow import FrameOverlay
 from . import improvisionconsumer, noterenderer, player
 from .player import Note
+from .configurable import Configurable
 
 
-class IMproVision(gui.overlays.Overlay):
+class IMproVision(gui.overlays.Overlay, Configurable):
     ## Class constants
 
     # preferences names
@@ -57,6 +58,8 @@ class IMproVision(gui.overlays.Overlay):
                 [player.MidiPlayer()],
                 self.app, 0, 0.1)
         ]
+
+        Configurable.__init__(self, None, {}, self.consumers)
 
         self.active_row = None
 

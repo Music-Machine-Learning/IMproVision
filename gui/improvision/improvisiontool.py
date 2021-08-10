@@ -55,7 +55,7 @@ class IMproVisionTool (SizedVBoxToolWidget, Configurable):
                     "Time Resolution (ms)", IMproVision.SCANLINE_PREF_TIMERES, app, Gtk.SpinButton,
                     self.SCANLINE_DEFAULT_TIME_RES_MS, self.SCANLINE_MIN_TIME_RES_MS, self.SCANLINE_MAX_TIME_RES_MS,
                 ),
-            })
+            }, self._overlay)
 
         toolbar = inline_toolbar(
             app, [
@@ -72,12 +72,8 @@ class IMproVisionTool (SizedVBoxToolWidget, Configurable):
         options.set_border_width(3)
 
         grid = Gtk.Grid()
-        row = 0
 
-        row = self.add_to_grid(grid, row)
-
-        for c in self._overlay.consumers:
-            row = c.add_to_grid(grid, row)
+        self.add_to_grid(grid, 0)
 
         options.add(grid)
         options.show_all()

@@ -1,4 +1,6 @@
 from pygame import midi
+from .configurable import Configurable
+
 
 class Note:
     def __init__(self, note, bend=0, noteon=True):
@@ -36,8 +38,9 @@ class AbsoluteNote(Note):
         return "freq: {}, {}".format(self.freq, Note.__str__(self))
 
 
-class NotePlayer:
+class NotePlayer(Configurable):
     def __init__(self):
+        Configurable.__init__(self)
         self.active_notes = set()
 
     def __del__(self):

@@ -1,7 +1,12 @@
 from .player import Note
+from .configurable import Configurable, Configuration
+from lib.gibindings import Gtk
 
 
-class NoteRenderer:
+class NoteRenderer(Configurable):
+    def __init__(self):
+        Configurable.__init__(self)
+
     def render(self, vals: [(int, int)]) -> [Note]:
         notes = set()
         for val, maxv in vals:
@@ -13,9 +18,15 @@ class NoteRenderer:
 
 
 class ChromaticRenderer(NoteRenderer):
-    def __init__(self, min_note: int, max_note: int):
-        self.min_note = min_note
-        self.max_note = max_note
+    def __init__(self, app):
+        Configurable.__init__(
+            self, "Chromatic Renderer",
+            {
+                "min_note": Configuration("Lowest Note", "improvision-chromatic-renderer-minnote", app,
+                                          Gtk.SpinButton, 21, 0, 127),
+                "max_note": Configuration("Highest Note", "improvision-chromatic-renderer-maxnote", app,
+                                          Gtk.SpinButton, 107, 0, 127),
+            })
 
     def render_note(self, val: int, max_val: int) -> Note:
         return Note(

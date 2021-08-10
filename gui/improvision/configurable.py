@@ -48,25 +48,35 @@ class Configuration:
 
 
 class Configurable(object):
-    def __init__(self, name, confmap: {str: Configuration}):
+    def __init__(self, name: str = None, confmap: {str: Configuration} = {}, subconfigs=None):
         self.name = name
-        self.confmap = confmap
+        self._confmap = confmap
+        if subconfigs is not None and type(subconfigs) is not list:
+            self._subconfigs = [subconfigs]
+        elif subconfigs is None:
+            self._subconfigs = []
+        else:
+            self._subconfigs = subconfigs
 
     def __getattr__(self, item):
-        cm = object.__getattribute__(self, "confmap")
+        cm = object.__getattribute__(self, "_confmap")
         if item in cm:
             return cm[item].get_value()
         raise AttributeError
 
     def add_to_grid(self, grid, row):
-        label = Gtk.Label()
-        label.set_text(_(self.name + ":"))
-        label.set_alignment(1.0, 1.0)
+        if self.name is not None:
+            label = Gtk.Label()
+            label.set_text(_(self.name + ":"))
+            label.set_alignment(1.0, 1.0)
 
-        grid.attach(label, 0, row, 1, 1)
-        row += 1
+            grid.attach(label, 0, row, 1, 1)
+            row += 1
 
-        for c in self.confmap.values():
+        for c in self._confmap.values():
             row = c.add_to_grid(grid, row)
+
+        for sc in self._subconfigs:
+            row = sc.add_to_grid(grid, row)
 
         return row

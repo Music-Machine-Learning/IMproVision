@@ -7,7 +7,7 @@ from .player import NotePlayer
 from .configurable import Configurable, Configuration
 
 
-class IMproVisionConsumer(threading.Thread):
+class IMproVisionConsumer(threading.Thread, Configurable):
     def __init__(self,  renderer: NoteRenderer, players: [NotePlayer]):
         threading.Thread.__init__(self, daemon=True)
         self.renderer = renderer
@@ -15,6 +15,7 @@ class IMproVisionConsumer(threading.Thread):
             self.players = players
         else:
             self.players = [players]
+        Configurable.__init__(self, None, {}, self.players+[self.renderer])
         self.queue = queue.SimpleQueue()
 
     def run(self) -> None:
@@ -53,7 +54,7 @@ class IMproVisionLumaConsumer(IMproVisionConsumer, Configurable):
                 "Max Luma", "improvision-luma-maxluma", app, Gtk.SpinButton,
                 maxluma, 0, 1, step_incr=0.01, page_incr=0.1, gui_setup_cb=configureDecimalSpinbuttons
             ),
-        })
+        }, self.players+[self.renderer])
 
     def process_data(self, color_column):
         notes = []
