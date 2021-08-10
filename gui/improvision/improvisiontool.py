@@ -53,12 +53,15 @@ class IMproVisionTool (SizedVBoxToolWidget):
         grid = Gtk.Grid()
         row = 0
 
-        def add_prop(self, label_text, propnam, grid, row, default, minv, maxv, step=1, page=1):
+        def add_prop(self, label_text, propnam, grid, row, default, minv, maxv, prefname, step=1, page=1):
             label = Gtk.Label()
             label.set_text(_(label_text+":"))
             label.set_alignment(1.0, 0.5)
-            adj = Gtk.Adjustment(value=default, lower=minv, upper=maxv, step_incr=step, page_incr=page)
-            cb = getattr(self, "_"+propnam+"_changed_cb")
+            if prefname not in self.app.preferences:
+                self.app.preferences[prefname] = default
+            adj = Gtk.Adjustment(value=self.app.preferences[prefname], lower=minv, upper=maxv, step_incr=step, page_incr=page)
+            def cb(adj):
+                self.app.preferences[prefname] = adj.get_value()
             adj.connect("value-changed", cb)
             setattr(self, "_"+propnam+"_adj", adj)
             spinbut = Gtk.SpinButton()
@@ -67,22 +70,24 @@ class IMproVisionTool (SizedVBoxToolWidget):
             spinbut.set_numeric(True)
             grid.attach(label, 0, row, 1, 1)
             grid.attach(spinbut, 1, row, 1, 1)
-            cb(adj)
             return row+1
 
         row = add_prop(
             self, "BPM", "bpm", grid, row,
             self.SCANLINE_DEFAULT_BPM, self.SCANLINE_MIN_BPM, self.SCANLINE_MAX_BPM,
+            IMproVision.SCANLINE_PREF_BPM,
         )
 
         row = add_prop(
             self, "Loop beats", "beats", grid, row,
             self.SCANLINE_DEFAULT_BEATS, self.SCANLINE_MIN_BEATS, self.SCANLINE_MAX_BEATS,
+            IMproVision.SCANLINE_PREF_BEATS,
         )
 
         row = add_prop(
             self, "Time Resolution (ms)", "timeres", grid, row,
             self.SCANLINE_DEFAULT_TIME_RES_MS, self.SCANLINE_MIN_TIME_RES_MS, self.SCANLINE_MAX_TIME_RES_MS,
+            IMproVision.SCANLINE_PREF_TIMERES,
         )
 
         options.add(grid)
@@ -104,7 +109,6 @@ class IMproVisionTool (SizedVBoxToolWidget):
             action = self.app.doc.action_group.get_action(a)
             action.connect("activate", cb)
 
-
     @property
     def bpm(self):
         return int(self._bpm_adj.get_value())
@@ -116,13 +120,3 @@ class IMproVisionTool (SizedVBoxToolWidget):
     @property
     def timeres(self):
         return int(self._timeres_adj.get_value())
-
-    def _bpm_changed_cb(self, adj):
-        self.app.preferences[IMproVision.SCANLINE_PREF_BPM] = self.bpm
-
-    def _beats_changed_cb(self, adj):
-        self.app.preferences[IMproVision.SCANLINE_PREF_BEATS] = self.beats
-
-    def _timeres_changed_cb(self, adj):
-        self.app.preferences[IMproVision.SCANLINE_PREF_TIMERES] = self.timeres
-
