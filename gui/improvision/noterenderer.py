@@ -5,7 +5,7 @@ from lib.gibindings import Gtk
 
 class NoteRenderer(Configurable):
     def __init__(self):
-        Configurable.__init__(self)
+        super().__init__()
 
     def render(self, vals: [(int, int)]) -> [Note]:
         notes = set()
@@ -42,6 +42,7 @@ class DiatonicRenderer(NoteRenderer):
     MinorHarmonic = [Note(0), Note(2), Note(3), Note(5), Note(7), Note(8), Note(11)]
 
     def __init__(self, fundamental: Note, octaves_range: int, scale_notes: [Note]):
+        super().__init__()
         self.fundamental = fundamental
         self.range = octaves_range
         self.scale = scale_notes

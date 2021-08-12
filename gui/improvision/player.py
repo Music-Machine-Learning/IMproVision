@@ -40,7 +40,7 @@ class AbsoluteNote(Note):
 
 class NotePlayer(Configurable):
     def __init__(self):
-        Configurable.__init__(self)
+        super().__init__()
         self.active_notes = set()
 
     def __del__(self):
@@ -70,6 +70,9 @@ class NotePlayer(Configurable):
 
 
 class LogPlayer(NotePlayer):
+    def __init__(self):
+        super().__init__()
+
     def notes_on(self, notes: set[Note]):
         print("notes on: {}, active_notes: {}".format(notes, self.active_notes))
 
@@ -79,7 +82,7 @@ class LogPlayer(NotePlayer):
 
 class MidiPlayer(NotePlayer):
     def __init__(self, device_id=None, channel=0):
-        NotePlayer.__init__(self)
+        super().__init__()
         if not midi.get_init():
             midi.init()
         self.channel = channel
