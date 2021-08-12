@@ -144,8 +144,7 @@ class IMproVision(gui.overlays.Overlay, Configurable):
         while True:
             self.sleeper.clear()
             if self.active:
-                frame = self.app.doc.model.get_frame()
-                w = frame[2]
+                w = self.app.doc.model.get_frame()[2]
                 if w == 0:
                     self.sleeper.wait(timeout=0.01)
                     continue
@@ -170,11 +169,11 @@ class IMproVision(gui.overlays.Overlay, Configurable):
                     timeres = self.app.preferences[self.SCANLINE_PREF_TIMERES] / 1000
                     bpm = self.app.preferences[self.SCANLINE_PREF_BPM]
                     beats = self.app.preferences[self.SCANLINE_PREF_BEATS]
-                    sleeptime = ((60 / bpm) * beats) / w
-                    if sleeptime < timeres:
-                        self.stepinc = math.ceil(timeres / sleeptime)
-                        sleeptime = timeres
-                    self.sleeper.wait(timeout=sleeptime)
+                    pixel_duration = ((60 / bpm) * beats) / w
+                    if pixel_duration < timeres:
+                        self.stepinc = math.ceil(timeres / pixel_duration)
+                        pixel_duration *= self.stepinc
+                    self.sleeper.wait(timeout=pixel_duration)
             else:
                 self.sleeper.wait()
 
