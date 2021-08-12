@@ -49,14 +49,26 @@ class Configuration:
 
 class Configurable(object):
     def __init__(self, name: str = None, confmap: {str: Configuration} = {}, subconfigs=None):
+        self._parent = None
         self.name = name
+        self.set_confmap(confmap)
+        self.set_subconfigs(subconfigs)
+
+    def set_confmap(self, confmap: {str: Configuration}):
         self._confmap = confmap
+
+    def set_subconfigs(self, subconfigs):
         if subconfigs is not None and type(subconfigs) is not list:
             self._subconfigs = [subconfigs]
         elif subconfigs is None:
             self._subconfigs = []
         else:
             self._subconfigs = subconfigs
+        for c in self._subconfigs:
+            c._parent = self
+
+    def set_name(self, name):
+        self.name = name
 
     def __getattr__(self, item):
         cm = object.__getattribute__(self, "_confmap")
