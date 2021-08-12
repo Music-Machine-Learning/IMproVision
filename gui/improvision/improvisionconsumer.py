@@ -7,6 +7,9 @@ from .player import NotePlayer
 from .configurable import Configurable, Configuration
 
 
+_consumers_ids = [0]
+
+
 class IMproVisionConsumer(threading.Thread, Configurable):
     def __init__(self,  renderer: NoteRenderer, players: [NotePlayer]):
         threading.Thread.__init__(self, daemon=True)
@@ -15,7 +18,9 @@ class IMproVisionConsumer(threading.Thread, Configurable):
             self.players = players
         else:
             self.players = [players]
-        Configurable.__init__(self, None, {}, self.players+[self.renderer])
+        self._cid = _consumers_ids[-1]+1
+        _consumers_ids.append(self._cid)
+        Configurable.__init__(self, "", {}, self.players+[self.renderer])
         self.queue = queue.SimpleQueue()
 
     def run(self) -> None:
@@ -45,16 +50,17 @@ class IMproVisionLumaConsumer(IMproVisionConsumer, Configurable):
         def configureDecimalSpinbuttons(sb: Gtk.SpinButton):
             sb.set_digits(2)
 
-        Configurable.__init__(self, 'Luma Detector', {
+        self.set_name('Luma Detector')
+        self.set_confmap({
             "minluma": Configuration(
-                "Min Luma", "improvision-luma-minluma", app, Gtk.SpinButton,
+                "Min Luma", "improvision-luma-"+str(self._cid)+"-minluma", app, Gtk.SpinButton,
                 minluma, 0, 1, step_incr=0.01, page_incr=0.1, gui_setup_cb=configureDecimalSpinbuttons
             ),
             "maxluma": Configuration(
-                "Max Luma", "improvision-luma-maxluma", app, Gtk.SpinButton,
+                "Max Luma", "improvision-luma-"+str(self._cid)+"-maxluma", app, Gtk.SpinButton,
                 maxluma, 0, 1, step_incr=0.01, page_incr=0.1, gui_setup_cb=configureDecimalSpinbuttons
             ),
-        }, self.players+[self.renderer])
+        })
 
     def process_data(self, color_column):
         notes = []
