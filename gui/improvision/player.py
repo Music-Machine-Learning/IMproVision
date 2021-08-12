@@ -2,6 +2,8 @@ from pygame import midi
 from .configurable import Configurable
 
 
+_midi_devices = {}
+
 class Note:
     def __init__(self, note, bend=0, noteon=True):
         self.note = int(note)
@@ -81,15 +83,18 @@ class LogPlayer(NotePlayer):
 
 
 class MidiPlayer(NotePlayer):
-    def __init__(self, device_id=None, channel=0):
+    def __init__(self, channel=0, device_id=None):
         super().__init__()
         if not midi.get_init():
             midi.init()
         self.channel = channel
         if device_id is None:
-            self.output = midi.Output(midi.get_default_output_id())
+            device_id = midi.get_default_output_id()
+        if device_id in _midi_devices:
+            self.output = _midi_devices[device_id]
         else:
             self.output = midi.Output(device_id)
+            _midi_devices[device_id] = self.output
 
     def notes_on(self, notes: set[Note]):
         for n in notes:
