@@ -92,7 +92,7 @@ class NumericConfiguration(Configuration):
 
 
 class ListConfiguration(Configuration):
-    # items can be both a list or a map, if it's the latter, the keys will be displayed and the values will be used internally
+    # items can be both a list or a dict, if it's the latter, the keys will be displayed and the values will be used internally
     def __init__(self, name: str, pref_path: str, default_val, items, gui_setup_cb=None):
         super().__init__(name, pref_path, default_val, gui_setup_cb)
 
@@ -105,8 +105,8 @@ class ListConfiguration(Configuration):
         pass
 
     def get_value(self):
-        if self._items is map:
-            return self._items[self._get_preference_value()]
+        if isinstance(self._items, dict):
+                return self._items[self._get_preference_value()]
         return self._get_preference_value()
 
     def _get_gui_item(self):
@@ -115,13 +115,16 @@ class ListConfiguration(Configuration):
 
         box = Gtk.ComboBoxText()
         items = self._items
+        box.connect("changed", _value_changed_cb)
         if isinstance(self._items, dict):
             items = list(self._items.keys())
         for i in items:
             box.append_text(i)
 
-        box.set_active(items.index(self._get_preference_value()))
-        box.connect("changed", _value_changed_cb)
+        try:
+            box.set_active(items.index(self._get_preference_value()))
+        except ValueError:
+            box.set_active(items.index(self._dfl_val))
 
         return box
 

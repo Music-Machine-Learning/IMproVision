@@ -1,5 +1,5 @@
 from pygame import midi
-from .configurable import Configurable, NumericConfiguration
+from .configurable import Configurable, NumericConfiguration, ListConfiguration
 from lib.gibindings import Gtk
 
 
@@ -91,19 +91,39 @@ class MidiPlayer(NotePlayer):
             midi.init()
         if device_id is None:
             device_id = midi.get_default_output_id()
-        if device_id in _midi_devices:
-            self.output = _midi_devices[device_id]
-        else:
-            self.output = midi.Output(device_id)
-            _midi_devices[device_id] = self.output
+
+        mididevs = {}
+        dfldev = None
+        for did in range(midi.get_count()):
+            dev = midi.get_device_info(did)
+            if dev[3] == 1:
+                devname = dev[1].decode()
+                mididevs[devname] = did
+            if did == device_id:
+                dfldev = devname
+
+        def config_devbox(combo):
+            def _set_dev_cb(c):
+                self.set_device(self.device)
+
+            combo.connect("changed", _set_dev_cb)
+            self.set_device(self.device)
 
         self.setup_configurable("MIDI Output", "midi", confmap={
             "channel": NumericConfiguration(
                 "MIDI Channel", "channel", Gtk.SpinButton,
                 channel, 1, 16, step_incr=1, page_incr=1
             ),
+            "device": ListConfiguration("MIDI Device", "device", dfldev, mididevs, gui_setup_cb=config_devbox),
         })
 
+    def set_device(self, device_id):
+        device_id = int(device_id)
+        if device_id in _midi_devices:
+            self.output = _midi_devices[device_id]
+        else:
+            self.output = midi.Output(device_id)
+            _midi_devices[device_id] = self.output
 
     def notes_on(self, notes: set[Note]):
         if isinstance(self.output, midi.Output):
