@@ -6,21 +6,35 @@ import lib.color
 from lib.pycompat import xrange
 from lib.pycompat import PY3
 
+from lib.gibindings import Gtk
+
 import gui.overlays
 import gui.drawutils
 from gui.framewindow import FrameOverlay
 from . import improvisionconsumer, noterenderer, player
 from .player import Note
-from .configurable import Configurable
+from .configurable import Configurable, Configuration
 
 
 class IMproVision(gui.overlays.Overlay, Configurable):
     ## Class constants
 
-    # preferences names
+    # preferences
     SCANLINE_PREF_BEATS = "improvision-beats"
+    SCANLINE_MIN_BEATS = 1
+    SCANLINE_DEFAULT_BEATS = 4
+    SCANLINE_MAX_BEATS = 64
+
     SCANLINE_PREF_BPM = "improvision-bpm"
+    SCANLINE_MIN_BPM = 1
+    SCANLINE_DEFAULT_BPM = 120
+    SCANLINE_MAX_BPM = 600
+
     SCANLINE_PREF_TIMERES = "improvision-timeres"
+    SCANLINE_MIN_TIME_RES_MS = 10
+    SCANLINE_DEFAULT_TIME_RES_MS = 20
+    SCANLINE_MAX_TIME_RES_MS = 1000
+
 
     # scanline default angle in radians, where 0 is left to right and
     # rotation goes on counter clockwise
@@ -61,7 +75,21 @@ class IMproVision(gui.overlays.Overlay, Configurable):
                 [player.MidiPlayer(channel=1)], 0.3, 0.8),
         ]
 
-        Configurable.__init__(self, None, {}, self.consumers)
+        Configurable.__init__(
+            self, "IMproVision", "improvision", {
+                "bpm": Configuration(
+                    "BPM", "bpm", Gtk.SpinButton,
+                    self.SCANLINE_DEFAULT_BPM, self.SCANLINE_MIN_BPM, self.SCANLINE_MAX_BPM,
+                ),
+                "beats": Configuration(
+                    "Loop beats", "beats", Gtk.SpinButton,
+                    self.SCANLINE_DEFAULT_BEATS, self.SCANLINE_MIN_BEATS, self.SCANLINE_MAX_BEATS,
+                ),
+                "timeres": Configuration(
+                    "Time Resolution (ms)", "timeres", Gtk.SpinButton,
+                    self.SCANLINE_DEFAULT_TIME_RES_MS, self.SCANLINE_MIN_TIME_RES_MS, self.SCANLINE_MAX_TIME_RES_MS,
+                ),
+            }, self.consumers, expanded=True)
 
         self.active_row = None
 
@@ -168,10 +196,8 @@ class IMproVision(gui.overlays.Overlay, Configurable):
                     self.active = False
                     continue
                 else:
-                    timeres = self.app.preferences[self.SCANLINE_PREF_TIMERES] / 1000
-                    bpm = self.app.preferences[self.SCANLINE_PREF_BPM]
-                    beats = self.app.preferences[self.SCANLINE_PREF_BEATS]
-                    pixel_duration = ((60 / bpm) * beats) / w
+                    timeres = self.timeres / 1000
+                    pixel_duration = ((60 / self.bpm) * self.beats) / w
                     if pixel_duration < timeres:
                         self.stepinc = math.ceil(timeres / pixel_duration)
                         pixel_duration *= self.stepinc

@@ -20,7 +20,7 @@ class IMproVisionConsumer(threading.Thread, Configurable):
             self.players = [players]
         self._cid = _consumers_ids[-1]+1
         _consumers_ids.append(self._cid)
-        Configurable.__init__(self, "", {}, self.players+[self.renderer])
+        Configurable.__init__(self, subconfigs=self.players+[self.renderer])
         self.queue = queue.SimpleQueue()
 
     def run(self) -> None:
@@ -50,14 +50,14 @@ class IMproVisionLumaConsumer(IMproVisionConsumer, Configurable):
         def configureDecimalSpinbuttons(sb: Gtk.SpinButton):
             sb.set_digits(2)
 
-        self.set_name('Luma Detector')
-        self.set_confmap({
+        self.set_name('Luma Detector', "luma-"+str(self._cid))
+        self.setup_configurable(confmap={
             "minluma": Configuration(
-                "Min Luma", "improvision-luma-"+str(self._cid)+"-minluma", Gtk.SpinButton,
+                "Min Luma", "minluma", Gtk.SpinButton,
                 minluma, 0, 1, step_incr=0.01, page_incr=0.1, gui_setup_cb=configureDecimalSpinbuttons
             ),
             "maxluma": Configuration(
-                "Max Luma", "improvision-luma-"+str(self._cid)+"-maxluma", Gtk.SpinButton,
+                "Max Luma", "maxluma", Gtk.SpinButton,
                 maxluma, 0, 1, step_incr=0.01, page_incr=0.1, gui_setup_cb=configureDecimalSpinbuttons
             ),
         })

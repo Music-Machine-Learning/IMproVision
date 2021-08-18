@@ -4,23 +4,11 @@ from gui.toolstack import SizedVBoxToolWidget, TOOL_WIDGET_NATURAL_HEIGHT_SHORT
 from lib.gettext import gettext as _
 from gui.widgets import inline_toolbar
 from .improvision import IMproVision
-from .configurable import Configurable, Configuration
+from .configurable import Configurable
 
 class IMproVisionTool (SizedVBoxToolWidget, Configurable):
     """Dockable panel showing options for IMproVision
     """
-
-    SCANLINE_MIN_BEATS = 1
-    SCANLINE_DEFAULT_BEATS = 4
-    SCANLINE_MAX_BEATS = 64
-
-    SCANLINE_MIN_BPM = 1
-    SCANLINE_DEFAULT_BPM = 120
-    SCANLINE_MAX_BPM = 600
-
-    SCANLINE_MIN_TIME_RES_MS = 10
-    SCANLINE_DEFAULT_TIME_RES_MS = 20
-    SCANLINE_MAX_TIME_RES_MS = 1000
 
     ## Class constants
 
@@ -40,21 +28,7 @@ class IMproVisionTool (SizedVBoxToolWidget, Configurable):
         self._overlay = IMproVision(self.app)
         self.app.doc.tdw.display_overlays.append(self._overlay)
 
-        Configurable.__init__(
-            self, "IMproVision", {
-                "bpm": Configuration(
-                    "BPM", IMproVision.SCANLINE_PREF_BPM, Gtk.SpinButton,
-                    self.SCANLINE_DEFAULT_BPM, self.SCANLINE_MIN_BPM, self.SCANLINE_MAX_BPM,
-                ),
-                "beats": Configuration(
-                    "Loop beats", IMproVision.SCANLINE_PREF_BEATS, Gtk.SpinButton,
-                    self.SCANLINE_DEFAULT_BEATS, self.SCANLINE_MIN_BEATS, self.SCANLINE_MAX_BEATS,
-                ),
-                "timeres": Configuration(
-                    "Time Resolution (ms)", IMproVision.SCANLINE_PREF_TIMERES, Gtk.SpinButton,
-                    self.SCANLINE_DEFAULT_TIME_RES_MS, self.SCANLINE_MIN_TIME_RES_MS, self.SCANLINE_MAX_TIME_RES_MS,
-                ),
-            }, self._overlay)
+        Configurable.__init__(self, subconfigs=self._overlay)
 
         toolbar = inline_toolbar(
             self.app, [

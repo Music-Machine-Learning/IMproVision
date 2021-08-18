@@ -97,11 +97,11 @@ class MidiPlayer(NotePlayer):
             self.output = midi.Output(device_id)
             _midi_devices[device_id] = self.output
 
-        self.set_name("MIDI Output")
+        self.set_name("MIDI Output", "midi")
 
-        self.set_confmap({
+        self.setup_configurable(confmap={
             "channel": Configuration(
-                "MIDI Channel", "midi-channel", Gtk.SpinButton,
+                "MIDI Channel", "channel", Gtk.SpinButton,
                 channel, 1, 16, step_incr=1, page_incr=1
             ),
         })

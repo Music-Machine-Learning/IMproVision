@@ -20,10 +20,25 @@ class Configuration:
         self.name = name
         self.gui_type = gui_type
         self.gui_setup_cb = gui_setup_cb
+        self.pref_name = pref_path
+        self._dfl_val = default_val
+        self._lower = lower
+        self._upper = upper
+        self._step = step_incr
+        self._page = page_incr
+        self.adj = None
+
+    def setup_preference(self, pref_path):
+        if pref_path[-1] != '-':
+            pref_path += '-'
+        pref_path += self.pref_name
         if pref_path not in self.app.preferences:
-            self.app.preferences[pref_path] = default_val
-        self.adj = Gtk.Adjustment(value=self.app.preferences[pref_path], lower=lower, upper=upper, step_incr=step_incr,
-                             page_incr=page_incr)
+            self.app.preferences[pref_path] = self._dfl_val
+        self.adj = Gtk.Adjustment(value=self.app.preferences[pref_path],
+                                  lower=self._lower,
+                                  upper=self._upper,
+                                  step_incr=self._step,
+                                  page_incr=self._page)
 
         def _value_changed_cb(a):
             self.app.preferences[pref_path] = self.adj.get_value()
@@ -48,27 +63,37 @@ class Configuration:
 
 
 class Configurable(object):
-    def __init__(self, name: str = None, confmap: {str: Configuration} = {}, subconfigs=None):
+    def __init__(self, label: str = None, name: str = None, confmap: {str: Configuration} = {}, subconfigs = [], expanded=False):
         self._parent = None
+        self.label = label
         self.name = name
-        self.set_confmap(confmap)
-        self.set_subconfigs(subconfigs)
+        self.expanded = expanded
+        self.setup_configurable(confmap, subconfigs)
 
-    def set_confmap(self, confmap: {str: Configuration}):
-        self._confmap = confmap
-
-    def set_subconfigs(self, subconfigs):
-        if subconfigs is not None and type(subconfigs) is not list:
-            self._subconfigs = [subconfigs]
-        elif subconfigs is None:
-            self._subconfigs = []
-        else:
-            self._subconfigs = subconfigs
+    def setup_configurable(self, confmap : {str: Configuration} = {}, subconfigs = None):
+        if subconfigs is not None:
+            if subconfigs is not None and type(subconfigs) is not list:
+                self._subconfigs = [subconfigs]
+            else:
+                self._subconfigs = subconfigs
         for c in self._subconfigs:
             c._parent = self
 
-    def set_name(self, name):
+        self._confmap = confmap
+
+    def get_prefpath(self):
+        ppath = ''
+        if self._parent is not None:
+            ppath = self._parent.get_prefpath()
+            if len(ppath) > 0 and ppath[-1] != '-':
+                ppath += '-'
+        if self.name is not None:
+            ppath += self.name
+        return ppath
+
+    def set_name(self, label, name):
         self.name = name
+        self.label = label
 
     def __getattr__(self, item):
         cm = object.__getattribute__(self, "_confmap")
@@ -77,18 +102,26 @@ class Configurable(object):
         raise AttributeError
 
     def add_to_grid(self, grid, row):
-        if self.name is not None:
-            label = Gtk.Label()
-            label.set_text(_(self.name + ":"))
-            label.set_alignment(1.0, 1.0)
+        for c in self._confmap.values():
+            c.setup_preference(self.get_prefpath())
 
-            grid.attach(label, 0, row, 1, 1)
+        outgrid = grid
+        outrow = row
+        if self.label is not None:
+            expander = Gtk.Expander(label=self.label)
+            expander.set_expanded(self.expanded)
+            outgrid = Gtk.Grid()
+            expander.add(outgrid)
+            grid.attach(expander, 1, row, 1, 1)
+            outrow = 0
             row += 1
 
         for c in self._confmap.values():
-            row = c.add_to_grid(grid, row)
+            outrow = c.add_to_grid(outgrid, outrow)
 
         for sc in self._subconfigs:
-            row = sc.add_to_grid(grid, row)
+            outrow = sc.add_to_grid(outgrid, outrow)
 
-        return row
+        if self.label is not None:
+            return row
+        return outrow
