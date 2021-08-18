@@ -1,5 +1,6 @@
 from pygame import midi
-from .configurable import Configurable
+from .configurable import Configurable, Configuration
+from lib.gibindings import Gtk
 
 
 _midi_devices = {}
@@ -83,11 +84,11 @@ class LogPlayer(NotePlayer):
 
 
 class MidiPlayer(NotePlayer):
-    def __init__(self, channel=0, device_id=None):
+    def __init__(self, channel=1, device_id=None):
         super().__init__()
+        self.output = None
         if not midi.get_init():
             midi.init()
-        self.channel = channel
         if device_id is None:
             device_id = midi.get_default_output_id()
         if device_id in _midi_devices:
@@ -96,13 +97,25 @@ class MidiPlayer(NotePlayer):
             self.output = midi.Output(device_id)
             _midi_devices[device_id] = self.output
 
+        self.set_name("MIDI Output")
+
+        self.set_confmap({
+            "channel": Configuration(
+                "MIDI Channel", "midi-channel", Gtk.SpinButton,
+                channel, 1, 16, step_incr=1, page_incr=1
+            ),
+        })
+
+
     def notes_on(self, notes: set[Note]):
-        for n in notes:
-            self.output.note_on(n.note, velocity=127, channel=self.channel)
+        if isinstance(self.output, midi.Output):
+            for n in notes:
+                self.output.note_on(n.note, velocity=127, channel=int(self.channel)-1)
 
     def notes_off(self, notes: set[Note]):
-        for n in notes:
-            self.output.note_off(n.note, velocity=0, channel=self.channel)
+        if isinstance(self.output, midi.Output):
+            for n in notes:
+                self.output.note_off(n.note, velocity=0, channel=int(self.channel)-1)
 
 
 class MonoMidiPlayer(MidiPlayer):
