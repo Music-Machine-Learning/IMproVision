@@ -44,8 +44,8 @@ class IMproVisionConsumer(threading.Thread, Configurable):
 
 
 class IMproVisionLumaConsumer(IMproVisionConsumer, Configurable):
-    def __init__(self, renderer: NoteRenderer, player: NotePlayer, app, minluma: float, maxluma: float):
-        IMproVisionConsumer.__init__(self, renderer, player)
+    def __init__(self, renderer: NoteRenderer, players: [NotePlayer], minluma: float, maxluma: float):
+        IMproVisionConsumer.__init__(self, renderer, players)
 
         def configureDecimalSpinbuttons(sb: Gtk.SpinButton):
             sb.set_digits(2)
@@ -53,11 +53,11 @@ class IMproVisionLumaConsumer(IMproVisionConsumer, Configurable):
         self.set_name('Luma Detector')
         self.set_confmap({
             "minluma": Configuration(
-                "Min Luma", "improvision-luma-"+str(self._cid)+"-minluma", app, Gtk.SpinButton,
+                "Min Luma", "improvision-luma-"+str(self._cid)+"-minluma", Gtk.SpinButton,
                 minluma, 0, 1, step_incr=0.01, page_incr=0.1, gui_setup_cb=configureDecimalSpinbuttons
             ),
             "maxluma": Configuration(
-                "Max Luma", "improvision-luma-"+str(self._cid)+"-maxluma", app, Gtk.SpinButton,
+                "Max Luma", "improvision-luma-"+str(self._cid)+"-maxluma", Gtk.SpinButton,
                 maxluma, 0, 1, step_incr=0.01, page_incr=0.1, gui_setup_cb=configureDecimalSpinbuttons
             ),
         })

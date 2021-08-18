@@ -7,7 +7,6 @@ class Configuration:
             self,
             name: str,
             pref_path: str,
-            application,
             gui_type: type,
             default_val,
             lower,
@@ -16,7 +15,8 @@ class Configuration:
             page_incr = 10,
             gui_setup_cb = None,
     ):
-        self.app = application
+        from gui.application import get_app
+        self.app = get_app()
         self.name = name
         self.gui_type = gui_type
         self.gui_setup_cb = gui_setup_cb

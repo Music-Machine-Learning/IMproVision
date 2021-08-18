@@ -18,13 +18,13 @@ class NoteRenderer(Configurable):
 
 
 class ChromaticRenderer(NoteRenderer):
-    def __init__(self, app):
+    def __init__(self):
         Configurable.__init__(
             self, "Chromatic Renderer",
             {
-                "min_note": Configuration("Lowest Note", "improvision-chromatic-renderer-minnote", app,
+                "min_note": Configuration("Lowest Note", "improvision-chromatic-renderer-minnote",
                                           Gtk.SpinButton, 21, 0, 127),
-                "max_note": Configuration("Highest Note", "improvision-chromatic-renderer-maxnote", app,
+                "max_note": Configuration("Highest Note", "improvision-chromatic-renderer-maxnote",
                                           Gtk.SpinButton, 107, 0, 127),
             })
 

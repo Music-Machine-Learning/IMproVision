@@ -35,30 +35,29 @@ class IMproVisionTool (SizedVBoxToolWidget, Configurable):
     def __init__(self):
         SizedVBoxToolWidget.__init__(self)
         from gui.application import get_app
-        app = get_app()
-        self.app = app
+        self.app = get_app()
 
-        self._overlay = IMproVision(app)
+        self._overlay = IMproVision(self.app)
         self.app.doc.tdw.display_overlays.append(self._overlay)
 
         Configurable.__init__(
             self, "IMproVision", {
                 "bpm": Configuration(
-                    "BPM", IMproVision.SCANLINE_PREF_BPM, app, Gtk.SpinButton,
+                    "BPM", IMproVision.SCANLINE_PREF_BPM, Gtk.SpinButton,
                     self.SCANLINE_DEFAULT_BPM, self.SCANLINE_MIN_BPM, self.SCANLINE_MAX_BPM,
                 ),
                 "beats": Configuration(
-                    "Loop beats", IMproVision.SCANLINE_PREF_BEATS, app, Gtk.SpinButton,
+                    "Loop beats", IMproVision.SCANLINE_PREF_BEATS, Gtk.SpinButton,
                     self.SCANLINE_DEFAULT_BEATS, self.SCANLINE_MIN_BEATS, self.SCANLINE_MAX_BEATS,
                 ),
                 "timeres": Configuration(
-                    "Time Resolution (ms)", IMproVision.SCANLINE_PREF_TIMERES, app, Gtk.SpinButton,
+                    "Time Resolution (ms)", IMproVision.SCANLINE_PREF_TIMERES, Gtk.SpinButton,
                     self.SCANLINE_DEFAULT_TIME_RES_MS, self.SCANLINE_MIN_TIME_RES_MS, self.SCANLINE_MAX_TIME_RES_MS,
                 ),
             }, self._overlay)
 
         toolbar = inline_toolbar(
-            app, [
+            self.app, [
                 ("IMproVisionTrigger", None),
                 ("IMproVisionLoop", None),
                 ("IMproVisionStep", None),
