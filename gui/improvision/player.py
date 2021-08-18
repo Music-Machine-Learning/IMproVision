@@ -1,5 +1,5 @@
 from pygame import midi
-from .configurable import Configurable, Configuration
+from .configurable import Configurable, NumericConfiguration
 from lib.gibindings import Gtk
 
 
@@ -97,10 +97,8 @@ class MidiPlayer(NotePlayer):
             self.output = midi.Output(device_id)
             _midi_devices[device_id] = self.output
 
-        self.set_name("MIDI Output", "midi")
-
-        self.setup_configurable(confmap={
-            "channel": Configuration(
+        self.setup_configurable("MIDI Output", "midi", confmap={
+            "channel": NumericConfiguration(
                 "MIDI Channel", "channel", Gtk.SpinButton,
                 channel, 1, 16, step_incr=1, page_incr=1
             ),

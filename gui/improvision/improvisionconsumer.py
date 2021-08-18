@@ -4,7 +4,7 @@ import queue
 from lib.gibindings import Gtk
 from .noterenderer import NoteRenderer
 from .player import NotePlayer
-from .configurable import Configurable, Configuration
+from .configurable import Configurable, NumericConfiguration
 
 
 _consumers_ids = [0]
@@ -50,13 +50,12 @@ class IMproVisionLumaConsumer(IMproVisionConsumer, Configurable):
         def configureDecimalSpinbuttons(sb: Gtk.SpinButton):
             sb.set_digits(2)
 
-        self.set_name('Luma Detector', "luma-"+str(self._cid))
-        self.setup_configurable(confmap={
-            "minluma": Configuration(
+        self.setup_configurable('Luma Detector', "luma-"+str(self._cid), confmap={
+            "minluma": NumericConfiguration(
                 "Min Luma", "minluma", Gtk.SpinButton,
                 minluma, 0, 1, step_incr=0.01, page_incr=0.1, gui_setup_cb=configureDecimalSpinbuttons
             ),
-            "maxluma": Configuration(
+            "maxluma": NumericConfiguration(
                 "Max Luma", "maxluma", Gtk.SpinButton,
                 maxluma, 0, 1, step_incr=0.01, page_incr=0.1, gui_setup_cb=configureDecimalSpinbuttons
             ),

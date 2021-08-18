@@ -13,7 +13,7 @@ import gui.drawutils
 from gui.framewindow import FrameOverlay
 from . import improvisionconsumer, noterenderer, player
 from .player import Note
-from .configurable import Configurable, Configuration
+from .configurable import Configurable, NumericConfiguration
 
 
 class IMproVision(gui.overlays.Overlay, Configurable):
@@ -68,24 +68,24 @@ class IMproVision(gui.overlays.Overlay, Configurable):
         # XXX: setup note consumers here
         self.consumers = [
             improvisionconsumer.IMproVisionLumaConsumer(
-                noterenderer.DiatonicRenderer(Note(38), 3, noterenderer.DiatonicRenderer.MinorNatural),
+                noterenderer.DiatonicRenderer(Note(38), 3, "minor pentatonic"),
                 [player.MidiPlayer(channel=0)], 0, 0.1),
             improvisionconsumer.IMproVisionLumaConsumer(
-                noterenderer.DiatonicRenderer(Note(49), 5, noterenderer.DiatonicRenderer.MajorPentatonic),
+                noterenderer.DiatonicRenderer(Note(49), 5, "major pentatonic"),
                 [player.MidiPlayer(channel=1)], 0.3, 0.8),
         ]
 
         Configurable.__init__(
             self, "IMproVision", "improvision", {
-                "bpm": Configuration(
+                "bpm": NumericConfiguration(
                     "BPM", "bpm", Gtk.SpinButton,
                     self.SCANLINE_DEFAULT_BPM, self.SCANLINE_MIN_BPM, self.SCANLINE_MAX_BPM,
                 ),
-                "beats": Configuration(
+                "beats": NumericConfiguration(
                     "Loop beats", "beats", Gtk.SpinButton,
                     self.SCANLINE_DEFAULT_BEATS, self.SCANLINE_MIN_BEATS, self.SCANLINE_MAX_BEATS,
                 ),
-                "timeres": Configuration(
+                "timeres": NumericConfiguration(
                     "Time Resolution (ms)", "timeres", Gtk.SpinButton,
                     self.SCANLINE_DEFAULT_TIME_RES_MS, self.SCANLINE_MIN_TIME_RES_MS, self.SCANLINE_MAX_TIME_RES_MS,
                 ),

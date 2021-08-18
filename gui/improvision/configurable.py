@@ -7,6 +7,47 @@ class Configuration:
             self,
             name: str,
             pref_path: str,
+            gui_setup_cb = None,
+    ):
+        from gui.application import get_app
+        self.app = get_app()
+        self.name = name
+        self.gui_setup_cb = gui_setup_cb
+        self.pref_name = pref_path
+
+    def specific_setup(self, pref_path):
+        raise NotImplementedError
+
+    def setup_preference(self, pref_path):
+        if pref_path[-1] != '-':
+            pref_path += '-'
+        pref_path += self.pref_name
+
+        self.specific_setup(pref_path)
+
+    def add_to_grid(self, grid, row):
+        label = Gtk.Label()
+        label.set_text(_(self.name + ":"))
+        label.set_alignment(1.0, 0.5)
+        changer = self._get_gui_item()
+        if self.gui_setup_cb is not None:
+            self.gui_setup_cb(changer)
+        grid.attach(label, 0, row, 1, 1)
+        grid.attach(changer, 1, row, 1, 1)
+        return row + 1
+
+    def _get_gui_item(self):
+        raise NotImplementedError
+
+    def get_value(self):
+        raise NotImplementedError
+
+
+class NumericConfiguration(Configuration):
+    def __init__(
+            self,
+            name: str,
+            pref_path: str,
             gui_type: type,
             default_val,
             lower,
@@ -15,12 +56,8 @@ class Configuration:
             page_incr = 10,
             gui_setup_cb = None,
     ):
-        from gui.application import get_app
-        self.app = get_app()
-        self.name = name
+        super().__init__(name, pref_path, gui_setup_cb)
         self.gui_type = gui_type
-        self.gui_setup_cb = gui_setup_cb
-        self.pref_name = pref_path
         self._dfl_val = default_val
         self._lower = lower
         self._upper = upper
@@ -28,12 +65,10 @@ class Configuration:
         self._page = page_incr
         self.adj = None
 
-    def setup_preference(self, pref_path):
-        if pref_path[-1] != '-':
-            pref_path += '-'
-        pref_path += self.pref_name
+    def specific_setup(self, pref_path):
         if pref_path not in self.app.preferences:
             self.app.preferences[pref_path] = self._dfl_val
+
         self.adj = Gtk.Adjustment(value=self.app.preferences[pref_path],
                                   lower=self._lower,
                                   upper=self._upper,
@@ -45,32 +80,32 @@ class Configuration:
 
         self.adj.connect("value-changed", _value_changed_cb)
 
-    def add_to_grid(self, grid, row):
-        label = Gtk.Label()
-        label.set_text(_(self.name + ":"))
-        label.set_alignment(1.0, 0.5)
+    def get_value(self):
+        return self.adj.get_value()
+
+    def _get_gui_item(self):
         changer = self.gui_type()
         changer.set_hexpand(True)
         changer.set_adjustment(self.adj)
-        if self.gui_setup_cb is not None:
-            self.gui_setup_cb(changer)
-        grid.attach(label, 0, row, 1, 1)
-        grid.attach(changer, 1, row, 1, 1)
-        return row + 1
-
-    def get_value(self):
-        return self.adj.get_value()
+        return changer
 
 
 class Configurable(object):
     def __init__(self, label: str = None, name: str = None, confmap: {str: Configuration} = {}, subconfigs = [], expanded=False):
         self._parent = None
-        self.label = label
-        self.name = name
+        self.label = None
+        self.name = None
+        self.confmap = {}
+        self._subconfigs = []
         self.expanded = expanded
-        self.setup_configurable(confmap, subconfigs)
+        self.setup_configurable(label, name, confmap, subconfigs)
 
-    def setup_configurable(self, confmap : {str: Configuration} = {}, subconfigs = None):
+    def setup_configurable(self, label: str = None, name: str = None, confmap : {str: Configuration} = None, subconfigs = None):
+        if label is not None:
+            self.label = label
+        if name is not None:
+            self.name = name
+
         if subconfigs is not None:
             if subconfigs is not None and type(subconfigs) is not list:
                 self._subconfigs = [subconfigs]
@@ -79,7 +114,8 @@ class Configurable(object):
         for c in self._subconfigs:
             c._parent = self
 
-        self._confmap = confmap
+        if confmap is not None:
+            self._confmap = confmap
 
     def get_prefpath(self):
         ppath = ''
@@ -90,10 +126,6 @@ class Configurable(object):
         if self.name is not None:
             ppath += self.name
         return ppath
-
-    def set_name(self, label, name):
-        self.name = name
-        self.label = label
 
     def __getattr__(self, item):
         cm = object.__getattribute__(self, "_confmap")
