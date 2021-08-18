@@ -3,27 +3,29 @@ from lib.gettext import gettext as _
 
 
 class Configuration:
-    def __init__(
-            self,
-            name: str,
-            pref_path: str,
-            gui_setup_cb = None,
-    ):
+    def __init__(self, name: str, pref_path: str, dfl_val, gui_setup_cb = None):
         from gui.application import get_app
         self.app = get_app()
         self.name = name
+        self._dfl_val = dfl_val
         self.gui_setup_cb = gui_setup_cb
         self.pref_name = pref_path
-
-    def specific_setup(self, pref_path):
-        raise NotImplementedError
 
     def setup_preference(self, pref_path):
         if pref_path[-1] != '-':
             pref_path += '-'
-        pref_path += self.pref_name
+        self.pref_path = pref_path + self.pref_name
 
-        self.specific_setup(pref_path)
+        if self.pref_path not in self.app.preferences:
+            self.app.preferences[self.pref_path] = self._dfl_val
+
+        self.specific_setup(self.pref_path, self.app.preferences[self.pref_path])
+
+    def _get_preference_value(self):
+        return self.app.preferences[self.pref_path]
+
+    def _set_value(self, val):
+        self.app.preferences[self.pref_path] = val
 
     def add_to_grid(self, grid, row):
         label = Gtk.Label()
@@ -35,6 +37,9 @@ class Configuration:
         grid.attach(label, 0, row, 1, 1)
         grid.attach(changer, 1, row, 1, 1)
         return row + 1
+
+    def specific_setup(self, pref_path, value):
+        raise NotImplementedError
 
     def _get_gui_item(self):
         raise NotImplementedError
@@ -56,27 +61,23 @@ class NumericConfiguration(Configuration):
             page_incr = 10,
             gui_setup_cb = None,
     ):
-        super().__init__(name, pref_path, gui_setup_cb)
+        super().__init__(name, pref_path, default_val, gui_setup_cb)
         self.gui_type = gui_type
-        self._dfl_val = default_val
         self._lower = lower
         self._upper = upper
         self._step = step_incr
         self._page = page_incr
         self.adj = None
 
-    def specific_setup(self, pref_path):
-        if pref_path not in self.app.preferences:
-            self.app.preferences[pref_path] = self._dfl_val
-
-        self.adj = Gtk.Adjustment(value=self.app.preferences[pref_path],
+    def specific_setup(self, pref_path, value):
+        self.adj = Gtk.Adjustment(value=value,
                                   lower=self._lower,
                                   upper=self._upper,
                                   step_incr=self._step,
                                   page_incr=self._page)
 
         def _value_changed_cb(a):
-            self.app.preferences[pref_path] = self.adj.get_value()
+            self._set_value(self.get_value())
 
         self.adj.connect("value-changed", _value_changed_cb)
 
@@ -89,6 +90,40 @@ class NumericConfiguration(Configuration):
         changer.set_adjustment(self.adj)
         return changer
 
+
+class ListConfiguration(Configuration):
+    # items can be both a list or a map, if it's the latter, the keys will be displayed and the values will be used internally
+    def __init__(self, name: str, pref_path: str, default_val, items, gui_setup_cb=None):
+        super().__init__(name, pref_path, default_val, gui_setup_cb)
+
+        if default_val not in items:
+            raise AttributeError("default value '{}' not in item list: {}".format(default_val, items))
+
+        self._items = items
+
+    def specific_setup(self, pref_path, value):
+        pass
+
+    def get_value(self):
+        if self._items is map:
+            return self._items[self._get_preference_value()]
+        return self._get_preference_value()
+
+    def _get_gui_item(self):
+        def _value_changed_cb(combo):
+            self._set_value(combo.get_active_text())
+
+        box = Gtk.ComboBoxText()
+        items = self._items
+        if isinstance(self._items, dict):
+            items = list(self._items.keys())
+        for i in items:
+            box.append_text(i)
+
+        box.set_active(items.index(self._get_preference_value()))
+        box.connect("changed", _value_changed_cb)
+
+        return box
 
 class Configurable(object):
     def __init__(self, label: str = None, name: str = None, confmap: {str: Configuration} = {}, subconfigs = [], expanded=False):
