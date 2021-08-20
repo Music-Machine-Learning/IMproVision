@@ -45,19 +45,18 @@ class DiatonicRenderer(NoteRenderer):
 
     def __init__(self, fundamental: Note, octaves_range: int, scale: str):
         super().__init__()
-        self.scale = scale
 
         self.setup_configurable("Diatonic Reader", 'diatonic', {
             'range': NumericConfiguration("Octaves Range", 'range',
                                    Gtk.SpinButton, octaves_range, 1, 16),
             'fundamental': NumericConfiguration("Fundamental", 'fundamental',
                                    Gtk.SpinButton, fundamental.note, 0, 127),
-            'scale': ListConfiguration("Scale", 'scale', scale, DiatonicRenderer.scales),
+            'scale': ListConfiguration("Scale", 'scale', scale, self.scales),
         })
 
     def render_note(self, val: int, max_val: int) -> Note:
-        scale = self.scales[self.scale]
-        trasl = int(round(val * (self.range * len(scale)) / max_val, 0))
+        scale = self.scale
+        trasl = int(round(val * (self.range * (len(scale)-1)) / max_val, 0))
         scalenote = scale[trasl % len(scale)]
         octave = int(trasl / len(scale))
         note = self.fundamental + scalenote.note + (octave * 12)
