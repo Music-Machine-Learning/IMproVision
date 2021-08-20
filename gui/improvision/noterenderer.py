@@ -5,7 +5,7 @@ from lib.gibindings import Gtk
 
 class NoteRenderer(Configurable):
     def __init__(self):
-        super().__init__()
+        super().__init__(expanded=True)
 
     def render(self, vals: [(int, int)]) -> [Note]:
         notes = set()
