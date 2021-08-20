@@ -187,6 +187,7 @@ class IMproVision(gui.overlays.Overlay, Configurable):
                 else:
                     if self.step + self.stepinc > w:
                         interrupt = True
+                        self.stop(None)
                         self.step = w-1
                     else:
                         self.step += self.stepinc
