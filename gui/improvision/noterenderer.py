@@ -1,4 +1,4 @@
-from .player import Note
+from .note import Note
 from .configurable import Configurable, NumericConfiguration, ListConfiguration
 from lib.gibindings import Gtk
 

@@ -12,7 +12,7 @@ import gui.overlays
 import gui.drawutils
 from gui.framewindow import FrameOverlay
 from . import improvisionconsumer, noterenderer, player
-from .player import Note
+from .note import Note
 from .configurable import Configurable, NumericConfiguration
 
 

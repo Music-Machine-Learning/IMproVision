@@ -1,44 +1,9 @@
 from pygame import midi
 from .configurable import Configurable, NumericConfiguration, ListConfiguration
 from lib.gibindings import Gtk
-
+from .note import Note
 
 _midi_devices = {}
-
-class Note:
-    def __init__(self, note, bend=0, noteon=True):
-        self.note = int(note)
-        self.bend = int(bend)
-        self.noteon = noteon
-
-    def __str__(self):
-        return "note: {} (b: {}), on: {}".format(self.note, self.bend, self.noteon)
-
-    def __repr__(self):
-        return str(self)
-
-    def __hash__(self):
-        return hash((self.note, self.bend, self.noteon))
-
-    def __eq__(self, other):
-        return self.note == other.note and self.bend == other.bend and self.noteon == other.noteon
-
-    def __lt__(self, other):
-        return self.note < other.note or (
-            self.note == other.note and self.bend < other.bend or
-            (
-                self.note == other.note and self.bend == other.bend and not self.noteon and other.noteon
-            )
-        )
-
-
-class AbsoluteNote(Note):
-    def __init__(self, freq, noteon):
-        self.freq = freq
-        #TODO: translate freq to note
-
-    def __str__(self):
-        return "freq: {}, {}".format(self.freq, Note.__str__(self))
 
 
 class NotePlayer(Configurable):
