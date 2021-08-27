@@ -1,4 +1,4 @@
-from .note import Note
+from .note import Note, NoteConfiguration
 from .configurable import Configurable, NumericConfiguration, ListConfiguration
 from lib.gibindings import Gtk
 
@@ -18,21 +18,16 @@ class NoteRenderer(Configurable):
 
 
 class ChromaticRenderer(NoteRenderer):
-    def __init__(self):
+    def __init__(self, minnote: Note, maxnote: Note):
         Configurable.__init__(
             self, "Chromatic Renderer", "chromatic-renderer",
             {
-                "min_note": Configuration("Lowest Note", "minnote",
-                                          Gtk.SpinButton, 21, 0, 127),
-                "max_note": Configuration("Highest Note", "maxnote",
-                                          Gtk.SpinButton, 107, 0, 127),
+                "min_note": NoteConfiguration("Lowest Note", "minnote", minnote),
+                "max_note": NoteConfiguration("Highest Note", "maxnote", maxnote),
             })
 
     def render_note(self, val: int, max_val: int) -> Note:
-        return Note(
-            note=self.min_note + int(val * (self.max_note - self.min_note) / max_val),
-        )
-
+        return self.min_note + int(val * (self.max_note - self.min_note).note / max_val)
 
 class DiatonicRenderer(NoteRenderer):
     scales = {
@@ -49,17 +44,13 @@ class DiatonicRenderer(NoteRenderer):
         self.setup_configurable("Diatonic Reader", 'diatonic', {
             'range': NumericConfiguration("Octaves Range", 'range',
                                    Gtk.SpinButton, octaves_range, 1, 16),
-            'fundamental': NumericConfiguration("Fundamental", 'fundamental',
-                                   Gtk.SpinButton, fundamental.note, 0, 127),
+            'fundamental': NoteConfiguration("Fundamental", 'fundamental', fundamental),
             'scale': ListConfiguration("Scale", 'scale', scale, self.scales),
         })
 
     def render_note(self, val: int, max_val: int) -> Note:
         scale = self.scale
-        trasl = int(round(val * (self.range * (len(scale)-1)) / max_val, 0))
+        trasl = int(round(val * ((self.range * len(scale))-1) / max_val, 0))
         scalenote = scale[trasl % len(scale)]
         octave = int(trasl / len(scale))
-        note = self.fundamental + scalenote.note + (octave * 12)
-        return Note(
-            note=min(max(int(note), 0), 127) #limit note in
-        )
+        return self.fundamental + scalenote.note + (octave * 12)

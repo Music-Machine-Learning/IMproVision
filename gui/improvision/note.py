@@ -1,4 +1,7 @@
 import math
+from .configurable import Configuration
+
+from lib.gibindings import Gtk
 
 
 class Note:
@@ -36,6 +39,9 @@ class Note:
 
     def __repr__(self):
         return str(self) + ", note: {}, bend: {}, freq: {}".format(self.note, self.bend, self.freq())
+
+    def __bytes__(self):
+        return bytes(str(self))
 
     def __hash__(self):
         return hash((self.note, self.bend))
@@ -125,3 +131,54 @@ class Note:
             self.bend = 127 + self.bend
 
 
+class NoteConfiguration(Configuration):
+    def __init__(self, name: str, pref_path: str, dfl_val: Note, lower: Note = Note(0), upper: Note = Note((127, 127)), gui_setup_cb=None):
+        super().__init__(name, pref_path, str(dfl_val), gui_setup_cb)
+        self._lower = lower
+        self._upper = upper
+        self._buf = None
+
+    def specific_setup(self, pref_path, value):
+        self._buf = Gtk.EntryBuffer()
+        self._buf.set_text(value, len(value))
+
+        def _text_deleted(b,p,n):
+            self._set_value(str(self.get_value()))
+
+        def _text_inserted(b,p,c,n):
+            self._set_value(str(self.get_value()))
+
+        self._buf.connect("deleted-text", _text_deleted)
+        self._buf.connect("inserted-text", _text_inserted)
+
+    def _get_gui_item(self):
+        entry = Gtk.Entry()
+        entry.set_buffer(self._buf)
+
+        def _plus_cb(b):
+            nn = str(self.get_value() + 1)
+            self._buf.set_text(nn, len(nn))
+
+        plus = Gtk.Button.new_with_label("+")
+        plus.connect("clicked", _plus_cb)
+
+        def _minus_cb(b):
+            nn = str(self.get_value() - 1)
+            self._buf.set_text(nn, len(nn))
+
+        minus = Gtk.Button.new_with_label("-")
+        minus.connect("clicked", _minus_cb)
+
+        grid = Gtk.Grid()
+        grid.attach(entry, 0, 0, 1, 1)
+        grid.attach(minus, 1, 0, 1, 1)
+        grid.attach(plus, 2, 0, 1, 1)
+
+        return grid
+
+    def get_value(self):
+        try:
+            n = Note(self._buf.get_text())
+        except:
+            n = Note(self._get_preference_value())
+        return n
