@@ -7,19 +7,27 @@ class Note:
 
     def __init__(self, notedef):
         '''
-        :param notedef: accepts three kinds of parameters:
+        :param notedef: based on the type the parameter will be interpreted as:
            - string: decode note from string name (e.g. A2, C#4+24, ...)
            - float: create note from frequency
+           - int: create a note without any bending and specified note number
            - tuple: explicitly set note number and bend (e.g. (69, 0), (12, 32), ...)
+           - Note: copy other note's values
         '''
 
-        if type(notedef) is str:
-            self.__from_string(notedef)
-        elif type(notedef) is float or type(notedef) is int:
-            self.__from_frequency(notedef)
+        self.bend = 0
+        if type(notedef) is int:
+            self.note = notedef
         elif type(notedef) is tuple:
             self.note = int(notedef[0])
             self.bend = int(notedef[1])
+        elif type(notedef) is str:
+            self.__from_string(notedef)
+        elif type(notedef) is float:
+            self.__from_frequency(notedef)
+        elif type(notedef) is Note:
+            self.note = notedef.note
+            self.bend = notedef.bend
 
         if self.note < 0 or self.note > 127:
             raise AttributeError("note {} out of midi range".format(self.note))
@@ -37,6 +45,30 @@ class Note:
 
     def __lt__(self, other):
         return self.note < other.note or (self.note == other.note and self.bend < other.bend)
+
+    def __add__(self, other):
+        on = Note(other)
+        note = self.note + on.note
+        bend = self.bend + on.bend
+        if bend > 127:
+            note += 1
+            bend -= 127
+        if note > 127:
+            note = 127
+            bend = 127
+        return Note((note, bend))
+
+    def __sub__(self, other):
+        on = Note(other)
+        note = self.note - on.note
+        bend = self.bend - on.bend
+        if bend < 0:
+            note -= 1
+            bend += 127
+        if note < 0:
+            note = 0
+            bend = 0
+        return Note((note, bend))
 
     def __str__(self):
         note = self._note_names[self.note % len(self._note_names)][0]
@@ -87,7 +119,6 @@ class Note:
 
     def __from_frequency(self, freq: float):
         self.note = int(12 * math.log2(freq/440) + 69)
-        self.bend = 0
         self.bend = int((12 * 128) * math.log2(freq / self.freq()))
         if self.bend < 0:
             self.note -= 1
