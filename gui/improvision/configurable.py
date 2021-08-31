@@ -3,7 +3,7 @@ from lib.gettext import gettext as _
 
 
 class Configuration:
-    def __init__(self, name: str, pref_path: str, dfl_val, gui_setup_cb = None):
+    def __init__(self, name: str, pref_path: str, dfl_val, gui_setup_cb=None):
         from gui.application import get_app
         self.app = get_app()
         self.name = name
@@ -91,6 +91,21 @@ class NumericConfiguration(Configuration):
         return changer
 
 
+# TODO
+class ColorConfiguration(Configuration):
+    def __init__(self, name: str, pref_path: str, dfl_val, gui_setup_cb=None):
+        super().__init__(name, pref_path, dfl_val, gui_setup_cb)
+
+    def specific_setup(self, pref_path, value):
+        pass
+
+    def _get_gui_item(self):
+        return Gtk.Label("color")
+
+    def get_value(self):
+        return self._dfl_val
+
+
 class ListConfiguration(Configuration):
     # items can be both a list or a dict, if it's the latter, the keys will be displayed and the values will be used internally
     def __init__(self, name: str, pref_path: str, default_val, items, gui_setup_cb=None):
@@ -154,6 +169,10 @@ class Configurable(object):
 
         if confmap is not None:
             self._confmap = confmap
+
+    def add_configurations(self, confmap : {str: Configuration}):
+        if confmap is not None:
+            self._confmap.update(confmap)
 
     def get_prefpath(self):
         ppath = ''
