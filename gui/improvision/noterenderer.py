@@ -7,9 +7,10 @@ class NoteRenderer(Configurable):
     def __init__(self):
         super().__init__(expanded=True)
 
-    def render(self, vals: [(int, int)]) -> [Note]:
+    def render(self, vals: ([int], int)) -> [Note]:
         notes = set()
-        for val, maxv in vals:
+        maxv = vals[1]
+        for val in vals[0]:
             notes.add(self.render_note(val, maxv))
         return notes
 
