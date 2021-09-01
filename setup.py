@@ -1030,7 +1030,7 @@ setup(
     license="GPLv2+",
     url="http://mypaint.org",
 
-    packages=['lib', 'lib.layer', 'gui', 'gui.colors'],
+    packages=['lib', 'lib.layer', 'gui', 'gui.colors', 'gui.improvision'],
     package_data={
         "gui": ['*.xml', '*.glade'],
     },
