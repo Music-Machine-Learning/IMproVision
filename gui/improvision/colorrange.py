@@ -7,6 +7,7 @@
 # (at your option) any later version.
 
 from lib import color
+from .configurable import Configuration
 
 
 def map_to_percent(minv, maxv, val):
@@ -14,28 +15,123 @@ def map_to_percent(minv, maxv, val):
 
 
 class ThreeValueColorRange(dict):
-    def __init__(self, type: str, references: {str: id}, refval: str, targetval: float, xref: str, xrange: (float, float), yrange: (float, float), targetdelta: float = 0.01):
+    def __init__(self, type: str, references: {str: id}, refval: str, targetval: float,
+                 xref: str, xrange: (float, float),
+                 yrange: (float, float),
+                 targetdelta: float = 0.01):
         self.type = type
         self.references = references
         self.refval = refval
-        self.refid = self.references[refval]
         self.target = targetval
         self.targetdelta = targetdelta
         self.xref = xref
-        self.xid = self.references[xref]
-        self.xmin = xrange[0]
-        self.xmax = xrange[1]
-        self.yid = 3 - self.refid - self.xid
-        self.yref = self.__rv_from_index(self.yid)
-        self.ymin = yrange[0]
-        self.ymax = yrange[1]
-        super().__init__(self, type=self.type, refval=self.refval, target=self.target, targetdelta=self.targetdelta, xref=self.xref, xmin=self.xmin, xmax=self.xmax, yref=self.yref, ymin=self.ymin, ymax=self.ymax)
+        self.xrange = xrange
+        self.yref = self.__rv_from_index(3 - self.refid - self.xid)
+        self.yrange = yrange
+        super().__init__(self, type=self.type)
 
     def __rv_from_index(self, index):
         for rn, rv in self.references.items():
             if rv == index:
                 return rn
         raise AttributeError("unknown parameter index: {}".format(index))
+
+    @property
+    def type(self):
+        return self['type']
+
+    @property
+    def refval(self):
+        return self['refval']
+
+    @refval.setter
+    def refval(self, val):
+        self['refval'] = val
+        self.refid = self.references[val]
+
+    @property
+    def target(self):
+        return self['target']
+
+    @target.setter
+    def target(self, val):
+        self['target'] = val
+
+    @property
+    def targetdelta(self):
+        return self['targetdelta']
+
+    @targetdelta.setter
+    def targetdelta(self, val):
+        self['targetdelta'] = val
+
+    @property
+    def xref(self):
+        return self['xref']
+
+    @xref.setter
+    def xref(self, val):
+        self['xref'] = val
+        self.xid = self.references[val]
+
+    @property
+    def xmin(self):
+        return self['xmin']
+
+    @xmin.setter
+    def xmin(self, val):
+        self['xmin'] = val
+
+    @property
+    def xmax(self):
+        return self['xmax']
+
+    @xmax.setter
+    def xmax(self, val):
+        self['xmax'] = val
+
+    @property
+    def xrange(self):
+        return self.xmin, self.xmax
+
+    @xrange.setter
+    def xrange(self, val):
+        self['xmin'] = val[0]
+        self['xmax'] = val[1]
+
+    @property
+    def yref(self):
+        return self['yref']
+
+    @yref.setter
+    def yref(self, val):
+        self['yref'] = val
+        self.yid = self.references[val]
+
+    @property
+    def ymin(self):
+        return self['ymin']
+
+    @ymin.setter
+    def ymin(self, val):
+        self['ymin'] = val
+
+    @property
+    def ymax(self):
+        return self['ymax']
+
+    @ymax.setter
+    def ymax(self, val):
+        self['ymax'] = val
+
+    @property
+    def yrange(self):
+        return self.ymin, self.ymax
+
+    @yrange.setter
+    def yrange(self, val):
+        self['ymin'] = val[0]
+        self['ymax'] = val[1]
 
     @staticmethod
     def from_dict(dict):
@@ -71,6 +167,18 @@ class ThreeValueColorRange(dict):
     def __repr__(self):
         return str(self)
 
+    def center_color(self) -> color.UIColor:
+        raise NotImplementedError
+
+    def _get_val_mean(self, vid):
+        if vid == self.refid:
+            return self.target
+        elif vid == self.xid:
+            return self.xmin + (self.xmax - self.xmin) / 2
+        elif vid == self.yid:
+            return self.ymin + (self.ymax - self.ymin) / 2
+        raise AttributeError("unknown parameter index '{}'".format(vid))
+
 
 class HSVColorRange(ThreeValueColorRange):
     type = 'HSV'
@@ -85,6 +193,21 @@ class HSVColorRange(ThreeValueColorRange):
 
     def in_range(self, color: color.UIColor) -> (bool, float, float):
         return super().in_range(color.get_hsv())
+
+    @property
+    def h(self):
+        return self._get_val_mean(0)
+
+    @property
+    def s(self):
+        return self._get_val_mean(1)
+
+    @property
+    def v(self):
+        return self._get_val_mean(2)
+
+    def center_color(self) -> color.UIColor:
+        return color.HSVColor(self.h, self.s, self.v)
 
 
 class RGBColorRange(ThreeValueColorRange):
@@ -101,8 +224,42 @@ class RGBColorRange(ThreeValueColorRange):
     def in_range(self, color: color.UIColor) -> (bool, float, float):
         return super().in_range(color.get_rgb())
 
+    @property
+    def r(self):
+        return self._get_val_mean(0)
+
+    @property
+    def g(self):
+        return self._get_val_mean(1)
+
+    @property
+    def b(self):
+        return self._get_val_mean(2)
+
+    def center_color(self) -> color.UIColor:
+        return color.RGBColor(self.r, self.g, self.b)
+
 
 threevaluecolorrangetypes = [
     HSVColorRange,
     RGBColorRange,
 ]
+
+
+class ColorRangeConfiguration(Configuration):
+    def __init__(self, name: str, pref_path: str, dfl_val: ThreeValueColorRange, gui_setup_cb=None):
+        super().__init__(name, pref_path, dfl_val, gui_setup_cb)
+        self.__refs = {}
+        for t in threevaluecolorrangetypes:
+            for r in t.references.keys():
+                self.__refs[r] = t
+
+    def specific_setup(self, pref_path, value):
+        pass
+
+    def _get_gui_item(self):
+        return Gtk.Label("color")
+
+    def get_value(self):
+        return self._dfl_val
+
