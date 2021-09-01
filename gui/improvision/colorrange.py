@@ -6,6 +6,7 @@
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
 
+from lib.gibindings import Gtk
 from lib import color
 from .configurable import Configuration
 
@@ -261,5 +262,5 @@ class ColorRangeConfiguration(Configuration):
         return Gtk.Label("color")
 
     def get_value(self):
-        return self._dfl_val
+        return ThreeValueColorRange.from_dict(self._get_preference_value())
 

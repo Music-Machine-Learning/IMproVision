@@ -14,6 +14,7 @@ from lib.gibindings import Gtk
 from .noterenderer import NoteRenderer
 from .player import NotePlayer
 from .configurable import Configurable, NumericConfiguration, ListConfiguration
+from .colorrange import ColorRangeConfiguration, HSVColorRange
 
 from lib import color
 
@@ -97,32 +98,14 @@ class HSVConsumer(ColorConsumer, Configurable):
         "value": 2,
     }
 
-    def __init__(self, renderer: NoteRenderer, players: [NotePlayer], default: float, firstrange: (float, float),
-                     secondrange: (float, float), refvalue: str, firstref: str):
+    def __init__(self, renderer: NoteRenderer, players: [NotePlayer]):
 
         ColorConsumer.__init__(self, renderer, players)
 
-        def configureDecimalSpinbuttons(sb: Gtk.SpinButton):
-            sb.set_digits(2)
-
         self.setup_configurable('HSV Detector', "hsv-"+str(self._cid), confmap={
-            "ref": ListConfiguration("Reference parameter", "reference", refvalue, self.references),
-            "firstrange": ListConfiguration("First range parameter", "firstrange", firstref, self.references),
-            "refval": NumericConfiguration(
-                "Reference", "refval", Gtk.SpinButton, default, 0, 1, step_incr=0.01, page_incr=0.1, gui_setup_cb=configureDecimalSpinbuttons
-            ),
-            "minfirst": NumericConfiguration(
-                "First min", "minfirst", Gtk.SpinButton, firstrange[0], 0, 1, step_incr=0.01, page_incr=0.1, gui_setup_cb=configureDecimalSpinbuttons
-            ),
-            "maxfirst": NumericConfiguration(
-                "First max", "maxfirst", Gtk.SpinButton, firstrange[1], 0, 1, step_incr=0.01, page_incr=0.1, gui_setup_cb=configureDecimalSpinbuttons
-            ),
-            "minsex": NumericConfiguration(
-                "Second min", "minsec", Gtk.SpinButton, secondrange[0], 0, 1, step_incr=0.01, page_incr=0.1, gui_setup_cb=configureDecimalSpinbuttons
-            ),
-            "maxsec": NumericConfiguration(
-                "Second max", "maxsec", Gtk.SpinButton, secondrange[1], 0, 1, step_incr=0.01, page_incr=0.1, gui_setup_cb=configureDecimalSpinbuttons
-            ),
+            "colorrange": ColorRangeConfiguration("Color range", "color_range", HSVColorRange(
+                'hue', 0, 'saturation', (0.8, 1), (0.4, 0.6)
+            )),
         })
 
     def process_data(self, color_column: [color.RGBColor]):
@@ -130,15 +113,13 @@ class HSVConsumer(ColorConsumer, Configurable):
         window = 0
         windowsize = 0
 
-        rv = self.ref
-        fv = self.firstrange
-        sv = 3 - rv - fv
+        cr = self.colorrange
 
         maxv = len(color_column)
         for y in range(maxv):
-            col = color_column[y].get_hsv()
+            match, xv, yv = cr.in_range(color_column[y])
 
-            if abs(col[rv]-self.refval) < 0.01 and self.minfirst <= col[fv] <= self.maxfirst and self.minsec <= col[sv] <= self.maxsec:
+            if match:
                 window += y
                 windowsize += 1
             else:

@@ -81,7 +81,7 @@ class IMproVision(gui.overlays.Overlay, Configurable):
                 [player.MidiPlayer(channel=0)], 0, 0.1),
             colorconsumer.HSVConsumer(
                 noterenderer.DiatonicRenderer(Note("C2"), 5, "major pentatonic"),
-                [player.MidiPlayer(channel=1)], 0.28, (0.5, 0.6), (0.3, 0.4), "hue", "saturation"),
+                [player.MidiPlayer(channel=1)]),
         ]
 
         Configurable.__init__(
