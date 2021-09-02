@@ -27,7 +27,6 @@ class ThreeValueColorRange(dict):
         self.targetdelta = targetdelta
         self.xref = xref
         self.xrange = xrange
-        self.yref = self.__rv_from_index(3 - self.refid - self.xid)
         self.yrange = yrange
         super().__init__(self, type=self.type)
 
@@ -74,6 +73,9 @@ class ThreeValueColorRange(dict):
     def xref(self, val):
         self['xref'] = val
         self.xid = self.references[val]
+        yval = self.__rv_from_index(3 - self.refid - self.xid)
+        self['yref'] = yval
+        self.yid = self.references[yval]
 
     @property
     def xmin(self):
@@ -103,11 +105,6 @@ class ThreeValueColorRange(dict):
     @property
     def yref(self):
         return self['yref']
-
-    @yref.setter
-    def yref(self, val):
-        self['yref'] = val
-        self.yid = self.references[val]
 
     @property
     def ymin(self):
@@ -259,7 +256,119 @@ class ColorRangeConfiguration(Configuration):
         pass
 
     def _get_gui_item(self):
-        return Gtk.Label("color")
+        grid = Gtk.Grid()
+
+        self.xref = Gtk.ComboBoxText()
+        self.yref = Gtk.Label()
+
+        def _update_xref(combo):
+            xref = combo.get_active_text()
+            v = self.get_value()
+            if xref in v.references:
+                v.xref = xref
+                self._set_value(v)
+                for r in self.get_value().references.keys():
+                    if r == self.get_value().yref:
+                        self.yref.set_text(r)
+
+        def _update_refval(combo):
+            ref = combo.get_active_text()
+            if ref in self.__refs:
+                oldv = self.get_value()
+                newv = oldv
+                if ref not in oldv.references:
+                    for xr in self.__refs[ref].references.keys():
+                        if xr != ref:
+                            newv = self.__refs[ref](ref, oldv.target, xr, oldv.xrange, oldv.yrange, oldv.targetdelta)
+                            break
+                else:
+                    newv.refval = ref
+                    for xr in newv.references.keys():
+                        if xr != ref:
+                            newv.xref = xr
+                            break
+                self._set_value(newv)
+
+                activeid = 0
+                refs = list(self.get_value().references.keys())
+                self.xref.remove_all()
+                for r in range(len(refs)):
+                    if refs[r] != self.get_value().refval:
+                        self.xref.append_text(refs[r])
+                        if refs[r] == self.get_value().xref:
+                            activeid = r
+                self.xref.set_active(activeid)
+
+                _update_xref(self.xref)
+
+        rvbox = Gtk.ComboBoxText()
+        rvbox.connect("changed", _update_refval)
+        activeid = 0
+        refs = list(self.__refs.keys())
+        for r in range(len(refs)):
+            rvbox.append_text(refs[r])
+            if refs[r] == self.get_value().refval:
+                activeid = r
+        rvbox.set_active(activeid)
+
+        grid.attach(rvbox, 0, 0, 1, 1)
+
+        def create_valspinner(cb):
+            valspinner = Gtk.SpinButton()
+            adj = Gtk.Adjustment(value=self.get_value().target,
+                                 lower=0,
+                                 upper=1,
+                                 step_incr=0.01,
+                                 page_incr=0.1)
+
+
+            adj.connect("value-changed", _target_changed)
+            valspinner.set_hexpand(True)
+            valspinner.set_adjustment(adj)
+            valspinner.set_digits(3)
+            return valspinner
+
+        def _target_changed(a):
+            v = self.get_value()
+            v.target = a.get_value()
+            self._set_value(v)
+
+        grid.attach(create_valspinner(_target_changed), 1, 0, 2, 1)
+
+        self.xref.connect("changed", _update_xref)
+        _update_refval(rvbox)
+
+        grid.attach(self.xref, 0, 1, 1, 1)
+
+        def _xmin_changed(a):
+            v = self.get_value()
+            v.xmin = a.get_value()
+            self._set_value(v)
+
+        def _xmax_changed(a):
+            v = self.get_value()
+            v.xmax = a.get_value()
+            self._set_value(v)
+
+        grid.attach(create_valspinner(_xmin_changed), 1, 1, 1, 1)
+        grid.attach(create_valspinner(_xmax_changed), 2, 1, 1, 1)
+
+        grid.attach(self.yref, 0, 2, 1, 1)
+
+        def _ymin_changed(a):
+            v = self.get_value()
+            v.ymin = a.get_value()
+            self._set_value(v)
+
+        def _ymax_changed(a):
+            v = self.get_value()
+            v.ymax = a.get_value()
+            self._set_value(v)
+
+        grid.attach(create_valspinner(_ymin_changed), 1, 2, 1, 1)
+        grid.attach(create_valspinner(_ymax_changed), 2, 2, 1, 1)
+
+        return grid
 
     def get_value(self):
         return ThreeValueColorRange.from_dict(self._get_preference_value())
