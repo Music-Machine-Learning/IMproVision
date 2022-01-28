@@ -14,7 +14,7 @@ from lib.gibindings import Gtk
 from .noterenderer import NoteRenderer
 from .player import NotePlayer
 from .configurable import Configurable, NumericConfiguration, ListConfiguration
-from .colorrange import ColorRangeConfiguration, HSVColorRange
+from .colorrange import ColorRangeConfiguration, ThreeValueColorRange
 
 from lib import color
 
@@ -22,23 +22,21 @@ _consumers_ids = [0]
 
 
 class ColorConsumer(threading.Thread, Configurable):
-    def __init__(self,  renderer: NoteRenderer, players: [NotePlayer]):
+    def __init__(self, renderer: NoteRenderer, players: [NotePlayer]):
         threading.Thread.__init__(self, daemon=True)
         self.renderer = renderer
         if type(players) is list:
             self.players = players
         else:
             self.players = [players]
-        self._cid = _consumers_ids[-1]+1
+        self._cid = _consumers_ids[-1] + 1
         _consumers_ids.append(self._cid)
-        Configurable.__init__(self, subconfigs=self.players+[self.renderer])
+        Configurable.__init__(self, subconfigs=self.players + [self.renderer])
         self.queue = queue.SimpleQueue()
 
     def run(self) -> None:
         while True:
-            notes = self.renderer.render(
-                self.process_data(self.queue.get(True, None))
-            )
+            notes = self.renderer.render(self.process_data(self.queue.get(True, None)))
             for p in self.players:
                 p.play(notes)
 
@@ -55,22 +53,46 @@ class ColorConsumer(threading.Thread, Configurable):
 
 
 class LumaConsumer(ColorConsumer, Configurable):
-    def __init__(self, renderer: NoteRenderer, players: [NotePlayer], minluma: float, maxluma: float):
+    def __init__(
+        self,
+        renderer: NoteRenderer,
+        players: [NotePlayer],
+        minluma: float,
+        maxluma: float,
+    ):
         ColorConsumer.__init__(self, renderer, players)
 
         def configureDecimalSpinbuttons(sb: Gtk.SpinButton):
             sb.set_digits(2)
 
-        self.setup_configurable('Luma Detector', "luma-"+str(self._cid), confmap={
-            "minluma": NumericConfiguration(
-                "Min Luma", "minluma", Gtk.SpinButton,
-                minluma, 0, 1, step_incr=0.01, page_incr=0.1, gui_setup_cb=configureDecimalSpinbuttons
-            ),
-            "maxluma": NumericConfiguration(
-                "Max Luma", "maxluma", Gtk.SpinButton,
-                maxluma, 0, 1, step_incr=0.01, page_incr=0.1, gui_setup_cb=configureDecimalSpinbuttons
-            ),
-        })
+        self.setup_configurable(
+            "Luma Detector",
+            "luma-" + str(self._cid),
+            confmap={
+                "minluma": NumericConfiguration(
+                    "Min Luma",
+                    "minluma",
+                    Gtk.SpinButton,
+                    minluma,
+                    0,
+                    1,
+                    step_incr=0.01,
+                    page_incr=0.1,
+                    gui_setup_cb=configureDecimalSpinbuttons,
+                ),
+                "maxluma": NumericConfiguration(
+                    "Max Luma",
+                    "maxluma",
+                    Gtk.SpinButton,
+                    maxluma,
+                    0,
+                    1,
+                    step_incr=0.01,
+                    page_incr=0.1,
+                    gui_setup_cb=configureDecimalSpinbuttons,
+                ),
+            },
+        )
 
     def process_data(self, color_column):
         notes = []
@@ -91,22 +113,27 @@ class LumaConsumer(ColorConsumer, Configurable):
         return (notes, maxv)
 
 
-class HSVConsumer(ColorConsumer, Configurable):
-    references = {
-        "hue": 0,
-        "saturation": 1,
-        "value": 2,
-    }
-
-    def __init__(self, renderer: NoteRenderer, players: [NotePlayer]):
+class ThreeValueColorConsumer(ColorConsumer, Configurable):
+    def __init__(
+        self,
+        renderer: NoteRenderer,
+        players: [NotePlayer],
+        colorrange: ThreeValueColorRange,
+    ):
 
         ColorConsumer.__init__(self, renderer, players)
 
-        self.setup_configurable('HSV Detector', "hsv-"+str(self._cid), confmap={
-            "colorrange": ColorRangeConfiguration("Color range", "color_range", HSVColorRange(
-                'hue', 0, 'saturation', (0.8, 1), (0.4, 0.6)
-            )),
-        })
+        self.setup_configurable(
+            f"{colorrange.type} Detector",
+            colorrange.type.lower() + "-" + str(self._cid),
+            confmap={
+                "colorrange": ColorRangeConfiguration(
+                    "Color range",
+                    "color_range",
+                    colorrange,
+                ),
+            },
+        )
 
     def process_data(self, color_column: [color.RGBColor]):
         notes = []
