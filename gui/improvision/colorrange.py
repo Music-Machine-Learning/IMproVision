@@ -342,16 +342,17 @@ class ColorRangeConfiguration(Configuration):
 
         grid.attach(rvbox, 0, 0, 1, 1)
 
-        def create_valspinner(cb):
+        def create_valspinner(cb, value):
             valspinner = Gtk.SpinButton()
-            adj = Gtk.Adjustment(value=self.get_value().target,
-                                 lower=0,
-                                 upper=1,
-                                 step_incr=0.01,
-                                 page_incr=0.1)
+            adj = Gtk.Adjustment(
+                value=value,
+                lower=0,
+                upper=1,
+                step_incr=0.01,
+                page_incr=0.1,
+            )
 
-
-            adj.connect("value-changed", _target_changed)
+            adj.connect("value-changed", cb)
             valspinner.set_hexpand(True)
             valspinner.set_adjustment(adj)
             valspinner.set_digits(3)
@@ -362,7 +363,9 @@ class ColorRangeConfiguration(Configuration):
             v.target = a.get_value()
             self._set_value(v)
 
-        grid.attach(create_valspinner(_target_changed), 1, 0, 2, 1)
+        grid.attach(
+            create_valspinner(_target_changed, self.get_value().target), 1, 0, 2, 1
+        )
 
         self.xref.connect("changed", _update_xref)
         _update_refval(rvbox)
@@ -379,8 +382,8 @@ class ColorRangeConfiguration(Configuration):
             v.xmax = a.get_value()
             self._set_value(v)
 
-        grid.attach(create_valspinner(_xmin_changed), 1, 1, 1, 1)
-        grid.attach(create_valspinner(_xmax_changed), 2, 1, 1, 1)
+        grid.attach(create_valspinner(_xmin_changed, self.get_value().xmin), 1, 1, 1, 1)
+        grid.attach(create_valspinner(_xmax_changed, self.get_value().xmax), 2, 1, 1, 1)
 
         grid.attach(self.yref, 0, 2, 1, 1)
 
@@ -394,11 +397,10 @@ class ColorRangeConfiguration(Configuration):
             v.ymax = a.get_value()
             self._set_value(v)
 
-        grid.attach(create_valspinner(_ymin_changed), 1, 2, 1, 1)
-        grid.attach(create_valspinner(_ymax_changed), 2, 2, 1, 1)
+        grid.attach(create_valspinner(_ymin_changed, self.get_value().ymin), 1, 2, 1, 1)
+        grid.attach(create_valspinner(_ymax_changed, self.get_value().ymax), 2, 2, 1, 1)
 
         return grid
 
     def get_value(self):
         return ThreeValueColorRange.from_dict(self._get_preference_value())
-
