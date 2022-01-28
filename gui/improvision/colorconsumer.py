@@ -13,8 +13,14 @@ import queue
 from lib.gibindings import Gtk
 from .noterenderer import NoteRenderer
 from .player import NotePlayer
-from .configurable import Configurable, NumericConfiguration, ListConfiguration
+from .configurable import (
+    Configurable,
+    NumericConfiguration,
+    ListConfiguration,
+    SliderConfiguration,
+)
 from .colorrange import ColorRangeConfiguration, ThreeValueColorRange
+from gui.colors.sliders import HCYLumaSlider
 
 from lib import color
 
@@ -69,27 +75,11 @@ class LumaConsumer(ColorConsumer, Configurable):
             "Luma Detector",
             "luma-" + str(self._cid),
             confmap={
-                "minluma": NumericConfiguration(
-                    "Min Luma",
-                    "minluma",
-                    Gtk.SpinButton,
-                    minluma,
-                    0,
-                    1,
-                    step_incr=0.01,
-                    page_incr=0.1,
-                    gui_setup_cb=configureDecimalSpinbuttons,
+                "minluma": SliderConfiguration(
+                    "Min Luma", "minluma", minluma, HCYLumaSlider()
                 ),
-                "maxluma": NumericConfiguration(
-                    "Max Luma",
-                    "maxluma",
-                    Gtk.SpinButton,
-                    maxluma,
-                    0,
-                    1,
-                    step_incr=0.01,
-                    page_incr=0.1,
-                    gui_setup_cb=configureDecimalSpinbuttons,
+                "maxluma": SliderConfiguration(
+                    "Max Luma", "maxluma", maxluma, HCYLumaSlider()
                 ),
             },
         )
@@ -99,9 +89,15 @@ class LumaConsumer(ColorConsumer, Configurable):
         window = 0
         windowsize = 0
         maxv = len(color_column)
+        if self.minluma <= self.maxluma:
+            minluma = self.minluma
+            maxluma = self.maxluma
+        else:
+            minluma = self.maxluma
+            maxluma = self.minluma
         for y in range(maxv):
             luma = color_column[y].get_luma()
-            if self.minluma <= luma <= self.maxluma:
+            if minluma <= luma <= maxluma:
                 window += y
                 windowsize += 1
             else:
