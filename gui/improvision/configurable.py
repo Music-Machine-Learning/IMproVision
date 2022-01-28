@@ -9,6 +9,8 @@
 
 from lib.gibindings import Gtk
 from lib.gettext import gettext as _
+from gui.colors.adjbases import SliderColorAdjuster, PREFS_KEY_CURRENT_COLOR
+from gui.colors import ColorManager
 
 
 class Configuration:
@@ -101,6 +103,48 @@ class NumericConfiguration(Configuration):
         changer.set_hexpand(True)
         changer.set_adjustment(self.adj)
         return changer
+
+
+class SliderConfiguration(Configuration):
+    def __init__(
+        self,
+        name,
+        pref_path,
+        default_val,
+        slider: SliderColorAdjuster,
+        color_manager=None,
+    ):
+        Configuration.__init__(
+            self,
+            name,
+            pref_path,
+            default_val,
+        )
+        self.slider = slider
+        self._loc_prefs = {
+            PREFS_KEY_CURRENT_COLOR: self.slider.get_color_for_bar_amount(default_val)
+        }
+        self.color_manager = color_manager
+        setattr(self.slider, "set_managed_color", self.set_managed_color)
+
+    def set_managed_color(self, color):
+        SliderColorAdjuster.set_managed_color(self.slider, color)
+        self._set_value(self.get_value())
+
+    def get_value(self):
+        return self.slider.get_bar_amount_for_color(self.slider.managed_color)
+
+    def specific_setup(self, pref_path, value):
+        if self.color_manager is None:
+            self.color_manager = ColorManager(
+                self._loc_prefs,
+                "",
+            )
+        self.slider.set_color_manager(self.color_manager)
+        self.set_managed_color(self.slider.get_color_for_bar_amount(value))
+
+    def _get_gui_item(self):
+        return self.slider
 
 
 class ListConfiguration(Configuration):
