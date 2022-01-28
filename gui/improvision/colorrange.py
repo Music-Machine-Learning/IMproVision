@@ -16,12 +16,15 @@ def map_to_percent(minv, maxv, val):
 
 
 class ThreeValueColorRange(dict):
-    def __init__(self, type: str, references: {str: id}, refval: str, targetval: float,
-                 xref: str, xrange: (float, float),
-                 yrange: (float, float),
-                 targetdelta: float = 0.01):
-        self.type = type
-        self.references = references
+    def __init__(
+        self,
+        refval: str,
+        targetval: float,
+        xref: str,
+        xrange: (float, float),
+        yrange: (float, float),
+        targetdelta: float = 0.01,
+    ):
         self.refval = refval
         self.target = targetval
         self.targetdelta = targetdelta
@@ -38,60 +41,64 @@ class ThreeValueColorRange(dict):
 
     @property
     def type(self):
-        return self['type']
+        return self["type"]
+
+    @property
+    def references(self):
+        return self["references"]
 
     @property
     def refval(self):
-        return self['refval']
+        return self["refval"]
 
     @refval.setter
     def refval(self, val):
-        self['refval'] = val
+        self["refval"] = val
         self.refid = self.references[val]
 
     @property
     def target(self):
-        return self['target']
+        return self["target"]
 
     @target.setter
     def target(self, val):
-        self['target'] = val
+        self["target"] = val
 
     @property
     def targetdelta(self):
-        return self['targetdelta']
+        return self["targetdelta"]
 
     @targetdelta.setter
     def targetdelta(self, val):
-        self['targetdelta'] = val
+        self["targetdelta"] = val
 
     @property
     def xref(self):
-        return self['xref']
+        return self["xref"]
 
     @xref.setter
     def xref(self, val):
-        self['xref'] = val
+        self["xref"] = val
         self.xid = self.references[val]
         yval = self.__rv_from_index(3 - self.refid - self.xid)
-        self['yref'] = yval
+        self["yref"] = yval
         self.yid = self.references[yval]
 
     @property
     def xmin(self):
-        return self['xmin']
+        return self["xmin"]
 
     @xmin.setter
     def xmin(self, val):
-        self['xmin'] = val
+        self["xmin"] = val
 
     @property
     def xmax(self):
-        return self['xmax']
+        return self["xmax"]
 
     @xmax.setter
     def xmax(self, val):
-        self['xmax'] = val
+        self["xmax"] = val
 
     @property
     def xrange(self):
@@ -99,28 +106,28 @@ class ThreeValueColorRange(dict):
 
     @xrange.setter
     def xrange(self, val):
-        self['xmin'] = val[0]
-        self['xmax'] = val[1]
+        self["xmin"] = val[0]
+        self["xmax"] = val[1]
 
     @property
     def yref(self):
-        return self['yref']
+        return self["yref"]
 
     @property
     def ymin(self):
-        return self['ymin']
+        return self["ymin"]
 
     @ymin.setter
     def ymin(self, val):
-        self['ymin'] = val
+        self["ymin"] = val
 
     @property
     def ymax(self):
-        return self['ymax']
+        return self["ymax"]
 
     @ymax.setter
     def ymax(self, val):
-        self['ymax'] = val
+        self["ymax"] = val
 
     @property
     def yrange(self):
@@ -128,20 +135,21 @@ class ThreeValueColorRange(dict):
 
     @yrange.setter
     def yrange(self, val):
-        self['ymin'] = val[0]
-        self['ymax'] = val[1]
+        self["ymin"] = val[0]
+        self["ymax"] = val[1]
 
     @staticmethod
     def from_dict(dict):
         for t in threevaluecolorrangetypes:
-            if dict['type'] == t.type:
+            if dict["type"] == t.type:
                 return t(
-                    refval=dict['refval'],
-                    targetval=dict['target'],
-                    xref=dict['xref'],
-                    xrange=(dict['xmin'], dict['xmax']),
-                    yrange=(dict['ymin'], dict['ymax']),
-                    targetdelta=dict['targetdelta'])
+                    refval=dict["refval"],
+                    targetval=dict["target"],
+                    xref=dict["xref"],
+                    xrange=(dict["xmin"], dict["xmax"]),
+                    yrange=(dict["ymin"], dict["ymax"]),
+                    targetdelta=dict["targetdelta"],
+                )
         raise AttributeError("unknown type '{}'".format(dict[type]))
 
     def in_range(self, color: (float, float, float)) -> (bool, float, float):
@@ -151,16 +159,30 @@ class ThreeValueColorRange(dict):
         """
         x = color[self.xid]
         y = color[self.yid]
-        if abs(color[self.refid] - self.target) < self.targetdelta \
-                and self.xmin <= x <= self.xmax \
-                and self.ymin <= y <= self.ymax:
-            return True, map_to_percent(self.xmin, self.xmax, x), map_to_percent(self.ymin, self.ymax, y)
+        if (
+            abs(color[self.refid] - self.target) < self.targetdelta
+            and self.xmin <= x <= self.xmax
+            and self.ymin <= y <= self.ymax
+        ):
+            return (
+                True,
+                map_to_percent(self.xmin, self.xmax, x),
+                map_to_percent(self.ymin, self.ymax, y),
+            )
         return False, 0, 0
 
     def __str__(self):
-        return "{}: {} (D: {}), {}: {}~{}, {}: {}~{}".format(self.refval, self.target, self.targetdelta,
-                                                             self.xref, self.xmin, self.xmax,
-                                                             self.yref, self.ymin, self.ymax)
+        return "{}: {} (D: {}), {}: {}~{}, {}: {}~{}".format(
+            self.refval,
+            self.target,
+            self.targetdelta,
+            self.xref,
+            self.xmin,
+            self.xmax,
+            self.yref,
+            self.ymin,
+            self.ymax,
+        )
 
     def __repr__(self):
         return str(self)
@@ -179,15 +201,12 @@ class ThreeValueColorRange(dict):
 
 
 class HSVColorRange(ThreeValueColorRange):
-    type = 'HSV'
+    type = "HSV"
     references = {
-        'hue': 0,
-        'saturation': 1,
-        'value': 2,
+        "hue": 0,
+        "saturation": 1,
+        "value": 2,
     }
-
-    def __init__(self, refval: str, targetval: float, xref: str, xrange: (float, float), yrange: (float, float), targetdelta: float = 0.01):
-        super().__init__(self.type, self.references, refval, targetval, xref, xrange, yrange, targetdelta)
 
     def in_range(self, color: color.UIColor) -> (bool, float, float):
         return super().in_range(color.get_hsv())
@@ -209,15 +228,12 @@ class HSVColorRange(ThreeValueColorRange):
 
 
 class RGBColorRange(ThreeValueColorRange):
-    type = 'RGB'
+    type = "RGB"
     references = {
-        'red': 0,
-        'green': 1,
-        'blue': 2,
+        "red": 0,
+        "green": 1,
+        "blue": 2,
     }
-
-    def __init__(self, refval: str, targetval: float, xref: str, xrange: (float, float), yrange: (float, float), targetdelta: float = 0.01):
-        super().__init__(self.type, self.references, refval, targetval, xref, xrange, yrange, targetdelta)
 
     def in_range(self, color: color.UIColor) -> (bool, float, float):
         return super().in_range(color.get_rgb())
@@ -245,7 +261,13 @@ threevaluecolorrangetypes = [
 
 
 class ColorRangeConfiguration(Configuration):
-    def __init__(self, name: str, pref_path: str, dfl_val: ThreeValueColorRange, gui_setup_cb=None):
+    def __init__(
+        self,
+        name: str,
+        pref_path: str,
+        dfl_val: ThreeValueColorRange,
+        gui_setup_cb=None,
+    ):
         super().__init__(name, pref_path, dfl_val, gui_setup_cb)
         self.__refs = {}
         for t in threevaluecolorrangetypes:
@@ -279,7 +301,14 @@ class ColorRangeConfiguration(Configuration):
                 if ref not in oldv.references:
                     for xr in self.__refs[ref].references.keys():
                         if xr != ref:
-                            newv = self.__refs[ref](ref, oldv.target, xr, oldv.xrange, oldv.yrange, oldv.targetdelta)
+                            newv = self.__refs[ref](
+                                ref,
+                                oldv.target,
+                                xr,
+                                oldv.xrange,
+                                oldv.yrange,
+                                oldv.targetdelta,
+                            )
                             break
                 else:
                     newv.refval = ref
