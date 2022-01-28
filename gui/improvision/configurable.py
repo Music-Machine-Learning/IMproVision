@@ -14,6 +14,7 @@ from lib.gettext import gettext as _
 class Configuration:
     def __init__(self, name: str, pref_path: str, dfl_val, gui_setup_cb=None):
         from gui.application import get_app
+
         self.app = get_app()
         self.name = name
         self._dfl_val = dfl_val
@@ -21,8 +22,8 @@ class Configuration:
         self.pref_name = pref_path
 
     def setup_preference(self, pref_path):
-        if pref_path[-1] != '-':
-            pref_path += '-'
+        if pref_path[-1] != "-":
+            pref_path += "-"
         self.pref_path = pref_path + self.pref_name
 
         if self.pref_path not in self.app.preferences:
@@ -59,16 +60,16 @@ class Configuration:
 
 class NumericConfiguration(Configuration):
     def __init__(
-            self,
-            name: str,
-            pref_path: str,
-            gui_type: type,
-            default_val,
-            lower,
-            upper,
-            step_incr = 1,
-            page_incr = 10,
-            gui_setup_cb = None,
+        self,
+        name: str,
+        pref_path: str,
+        gui_type: type,
+        default_val,
+        lower,
+        upper,
+        step_incr=1,
+        page_incr=10,
+        gui_setup_cb=None,
     ):
         super().__init__(name, pref_path, default_val, gui_setup_cb)
         self.gui_type = gui_type
@@ -79,11 +80,13 @@ class NumericConfiguration(Configuration):
         self.adj = None
 
     def specific_setup(self, pref_path, value):
-        self.adj = Gtk.Adjustment(value=value,
-                                  lower=self._lower,
-                                  upper=self._upper,
-                                  step_incr=self._step,
-                                  page_incr=self._page)
+        self.adj = Gtk.Adjustment(
+            value=value,
+            lower=self._lower,
+            upper=self._upper,
+            step_incr=self._step,
+            page_incr=self._page,
+        )
 
         def _value_changed_cb(a):
             self._set_value(self.get_value())
@@ -102,11 +105,15 @@ class NumericConfiguration(Configuration):
 
 class ListConfiguration(Configuration):
     # items can be both a list or a dict, if it's the latter, the keys will be displayed and the values will be used internally
-    def __init__(self, name: str, pref_path: str, default_val, items, gui_setup_cb=None):
+    def __init__(
+        self, name: str, pref_path: str, default_val, items, gui_setup_cb=None
+    ):
         super().__init__(name, pref_path, default_val, gui_setup_cb)
 
         if default_val not in items:
-            raise AttributeError("default value '{}' not in item list: {}".format(default_val, items))
+            raise AttributeError(
+                "default value '{}' not in item list: {}".format(default_val, items)
+            )
 
         self._items = items
 
@@ -115,7 +122,7 @@ class ListConfiguration(Configuration):
 
     def get_value(self):
         if isinstance(self._items, dict):
-                return self._items[self._get_preference_value()]
+            return self._items[self._get_preference_value()]
         return self._get_preference_value()
 
     def _get_gui_item(self):
@@ -137,8 +144,16 @@ class ListConfiguration(Configuration):
 
         return box
 
+
 class Configurable(object):
-    def __init__(self, label: str = None, name: str = None, confmap: {str: Configuration} = {}, subconfigs = [], expanded=False):
+    def __init__(
+        self,
+        label: str = None,
+        name: str = None,
+        confmap: {str: Configuration} = {},
+        subconfigs=[],
+        expanded=False,
+    ):
         self._parent = None
         self.label = None
         self.name = None
@@ -147,7 +162,13 @@ class Configurable(object):
         self.expanded = expanded
         self.setup_configurable(label, name, confmap, subconfigs)
 
-    def setup_configurable(self, label: str = None, name: str = None, confmap : {str: Configuration} = None, subconfigs = None):
+    def setup_configurable(
+        self,
+        label: str = None,
+        name: str = None,
+        confmap: {str: Configuration} = None,
+        subconfigs=None,
+    ):
         if label is not None:
             self.label = label
         if name is not None:
@@ -164,16 +185,16 @@ class Configurable(object):
         if confmap is not None:
             self._confmap = confmap
 
-    def add_configurations(self, confmap : {str: Configuration}):
+    def add_configurations(self, confmap: {str: Configuration}):
         if confmap is not None:
             self._confmap.update(confmap)
 
     def get_prefpath(self):
-        ppath = ''
+        ppath = ""
         if self._parent is not None:
             ppath = self._parent.get_prefpath()
-            if len(ppath) > 0 and ppath[-1] != '-':
-                ppath += '-'
+            if len(ppath) > 0 and ppath[-1] != "-":
+                ppath += "-"
         if self.name is not None:
             ppath += self.name
         return ppath
