@@ -20,7 +20,7 @@ from lib.gibindings import Gtk
 import gui.overlays
 import gui.drawutils
 from gui.framewindow import FrameOverlay
-from . import colorconsumer, noterenderer, player
+from . import colorconsumer, noterenderer, player, colorrange
 from .note import Note
 from .configurable import Configurable, NumericConfiguration
 
@@ -43,7 +43,6 @@ class IMproVision(gui.overlays.Overlay, Configurable):
     SCANLINE_MIN_TIME_RES_MS = 10
     SCANLINE_DEFAULT_TIME_RES_MS = 20
     SCANLINE_MAX_TIME_RES_MS = 1000
-
 
     # scanline default angle in radians, where 0 is left to right and
     # rotation goes on counter clockwise
@@ -78,27 +77,55 @@ class IMproVision(gui.overlays.Overlay, Configurable):
         self.consumers = [
             colorconsumer.LumaConsumer(
                 noterenderer.DiatonicRenderer(Note("A1"), 3, "minor pentatonic"),
-                [player.MidiPlayer(channel=0)], 0, 0.1),
-            colorconsumer.HSVConsumer(
+                [player.MidiPlayer(channel=0)],
+                0,
+                0.1,
+            ),
+            colorconsumer.ThreeValueColorConsumer(
                 noterenderer.DiatonicRenderer(Note("C2"), 5, "major pentatonic"),
-                [player.MidiPlayer(channel=1)]),
+                [player.MidiPlayer(channel=1)],
+                colorrange.HSVColorRange("hue", 0, "saturation", (0.8, 1), (0.4, 0.6)),
+            ),
+            colorconsumer.ThreeValueColorConsumer(
+                noterenderer.DiatonicRenderer(Note("C2"), 5, "major pentatonic"),
+                [player.MidiPlayer(channel=1)],
+                colorrange.RGBColorRange("red", 0, "green", (0.8, 1), (0.4, 0.6)),
+            ),
         ]
 
         Configurable.__init__(
-            self, "IMproVision", "improvision", {
+            self,
+            "IMproVision",
+            "improvision",
+            {
                 "bpm": NumericConfiguration(
-                    "BPM", "bpm", Gtk.SpinButton,
-                    self.SCANLINE_DEFAULT_BPM, self.SCANLINE_MIN_BPM, self.SCANLINE_MAX_BPM,
+                    "BPM",
+                    "bpm",
+                    Gtk.SpinButton,
+                    self.SCANLINE_DEFAULT_BPM,
+                    self.SCANLINE_MIN_BPM,
+                    self.SCANLINE_MAX_BPM,
                 ),
                 "beats": NumericConfiguration(
-                    "Loop beats", "beats", Gtk.SpinButton,
-                    self.SCANLINE_DEFAULT_BEATS, self.SCANLINE_MIN_BEATS, self.SCANLINE_MAX_BEATS,
+                    "Loop beats",
+                    "beats",
+                    Gtk.SpinButton,
+                    self.SCANLINE_DEFAULT_BEATS,
+                    self.SCANLINE_MIN_BEATS,
+                    self.SCANLINE_MAX_BEATS,
                 ),
                 "timeres": NumericConfiguration(
-                    "Time Resolution (ms)", "timeres", Gtk.SpinButton,
-                    self.SCANLINE_DEFAULT_TIME_RES_MS, self.SCANLINE_MIN_TIME_RES_MS, self.SCANLINE_MAX_TIME_RES_MS,
+                    "Time Resolution (ms)",
+                    "timeres",
+                    Gtk.SpinButton,
+                    self.SCANLINE_DEFAULT_TIME_RES_MS,
+                    self.SCANLINE_MIN_TIME_RES_MS,
+                    self.SCANLINE_MAX_TIME_RES_MS,
                 ),
-            }, self.consumers, expanded=True)
+            },
+            self.consumers,
+            expanded=True,
+        )
 
         self.active_row = None
 
@@ -164,8 +191,12 @@ class IMproVision(gui.overlays.Overlay, Configurable):
 
                 self.data_ready.set()
 
-            base = self.app.doc.tdw.model_to_display(self.active_row[0], self.active_row[1])
-            top = self.app.doc.tdw.model_to_display(self.active_row[0], self.active_row[1] + self.active_row[3])
+            base = self.app.doc.tdw.model_to_display(
+                self.active_row[0], self.active_row[1]
+            )
+            top = self.app.doc.tdw.model_to_display(
+                self.active_row[0], self.active_row[1] + self.active_row[3]
+            )
 
             # draw scanline
             cr.new_path()
@@ -197,7 +228,7 @@ class IMproVision(gui.overlays.Overlay, Configurable):
                     if self.step + self.stepinc > w:
                         interrupt = True
                         self.stop(None)
-                        self.step = w-1
+                        self.step = w - 1
                     else:
                         self.step += self.stepinc
                 self.step_changed = True
@@ -226,7 +257,9 @@ class IMproVision(gui.overlays.Overlay, Configurable):
                 actual_row = self.active_row[:]
                 actual_row[0] -= 1
 
-                pixbuf = self.app.doc.model._layers.render_layer_as_pixbuf(self.app.doc.model._layers, actual_row)
+                pixbuf = self.app.doc.model._layers.render_layer_as_pixbuf(
+                    self.app.doc.model._layers, actual_row
+                )
 
                 n_channels = pixbuf.get_n_channels()
                 assert n_channels in (3, 4)
@@ -236,16 +269,20 @@ class IMproVision(gui.overlays.Overlay, Configurable):
                 rowstride = pixbuf.get_rowstride()
                 for y in xrange(min(self.active_row[3], pixbuf.get_height())):
                     if PY3:
-                        col = lib.color.RGBColor(data[y*rowstride + n_channels]/255,
-                                                 data[y*rowstride + n_channels + 1]/255,
-                                                 data[y*rowstride + n_channels + 2]/255)
+                        col = lib.color.RGBColor(
+                            data[y * rowstride + n_channels] / 255,
+                            data[y * rowstride + n_channels + 1] / 255,
+                            data[y * rowstride + n_channels + 2] / 255,
+                        )
                     else:
-                        col = lib.color.RGBColor(ord(data[y*rowstride + n_channels])/255,
-                                                 ord(data[y*rowstride + n_channels + 1])/255,
-                                                 ord(data[y*rowstride + n_channels + 2])/255)
+                        col = lib.color.RGBColor(
+                            ord(data[y * rowstride + n_channels]) / 255,
+                            ord(data[y * rowstride + n_channels + 1]) / 255,
+                            ord(data[y * rowstride + n_channels + 2]) / 255,
+                        )
                     colors.append(col)
 
-                #print("step {}, colors: {}".format(self.step, colors))
+                # print("step {}, colors: {}".format(self.step, colors))
                 for c in self.consumers:
                     c.data_ready(colors)
 
