@@ -333,17 +333,16 @@ class ColorRangeConfiguration(Configuration):
             )
             self._color_sliders[m].set_hexpand(True)
 
-        for m in self._loc_prefs:
+        for m, mgr in self._color_mgrs.items():
             if m != "target":
-                self._color_mgrs["target"].add_chld_mgr(self._color_mgrs[m])
+                self._color_mgrs["target"].add_chld_mgr(mgr)
+            self._color_sliders[m].set_managed_color(v.base_color)
 
         for m, slider in self._color_sliders.items():
-            print(
-                f"setting default value for slider {m}: {v[m]} ({slider.get_color_for_bar_amount(v[m])})"
-            )
-            slider.set_managed_color(slider.get_color_for_bar_amount(v[m]))
+            slider.set_managed_color(slider.get_color_for_bar_amount(value[m]))
 
     def _get_gui_item(self):
+
         grid = Gtk.Grid()
 
         self.xref = Gtk.ComboBoxText()
@@ -384,7 +383,6 @@ class ColorRangeConfiguration(Configuration):
             if reset_color is not None:
                 slider.color_manager.set_color(reset_color)
             newcol = slider.get_color_for_bar_amount(pos)
-            print(f"setting slider {slider.color_manager._ref} to pos {pos} ({newcol})")
             slider.color_manager.set_color(newcol)
 
         def _update_xref(combo):
