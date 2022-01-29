@@ -25,6 +25,10 @@ from lib.color import RGBColor, HSVColor
 
 
 def map_to_percent(minv, maxv, val):
+    if minv > maxv:
+        return (val - maxv) / (minv - maxv)
+    elif minv == maxv:
+        return 0
     return (val - minv) / (maxv - minv)
 
 
