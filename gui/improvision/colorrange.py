@@ -8,6 +8,8 @@
 
 from lib.gibindings import Gtk
 from lib import color
+from lib.pycompat import xrange
+import cairo
 from .configurable import Configuration, SliderConfiguration
 from gui.colors.sliders import (
     RGBRedSlider,
@@ -18,7 +20,9 @@ from gui.colors.sliders import (
     HSVValueSlider,
 )
 from gui.colors import ColorManager
-from gui.colors.adjbases import SliderColorAdjuster
+from gui.colors.adjbases import SliderColorAdjuster, ColorAdjusterWidget, ColorAdjuster
+from gui.colors.uimisc import PRIMARY_ADJUSTERS_MIN_HEIGHT, PRIMARY_ADJUSTERS_MIN_WIDTH
+from gui.colors.util import draw_marker_circle, clamp
 
 from functools import partial
 from lib.color import RGBColor, HSVColor
@@ -30,6 +34,14 @@ def map_to_percent(minv, maxv, val):
     elif minv == maxv:
         return 0
     return (val - minv) / (maxv - minv)
+
+
+def map_to_range(minv, maxv, pct):
+    if minv > maxv:
+        return maxv + (pct * (minv - maxv))
+    elif minv == maxv:
+        return minv
+    return minv + (pct * (maxv - minv))
 
 
 class ThreeValueColorRange(dict):
@@ -305,6 +317,128 @@ class ColorRangeManager(ColorManager):
             ch.set_color(ch._slider.get_color_for_bar_amount(pos))
 
 
+class ColorRangeCube(ColorAdjusterWidget):
+    """Planar slice through an HSV cube."""
+
+    def __init__(self, conf):
+        super().__init__()
+        w = PRIMARY_ADJUSTERS_MIN_WIDTH
+        h = PRIMARY_ADJUSTERS_MIN_HEIGHT
+        self.set_size_request(w, h)
+        self.set_hexpand(True)
+        self._conf = conf
+
+    def __get_faces(self):
+        v = self._conf.get_value()
+        x = v.xref[0]
+        y = v.yref[0]
+        return x, y
+
+    def __get_central_color(self):
+        return self._conf._color_mgrs["target"].get_color()
+
+    def render_background_cb(self, cr, wd, ht, icon_border=None):
+        v = self._conf.get_value()
+        col = self.__get_central_color()
+        b = icon_border
+        if b is None:
+            b = self.BORDER_WIDTH
+        eff_wd = int(wd - 2 * b)
+        eff_ht = int(ht - 2 * b)
+
+        f1, f2 = self.__get_faces()
+
+        step = max(1, int(eff_wd // 128))
+
+        rect_x, rect_y = int(b) + 0.5, int(b) + 0.5
+        rect_w, rect_h = int(eff_wd) - 1, int(eff_ht) - 1
+
+        # Paint the central area offscreen
+        cr.push_group()
+        for x in xrange(0, eff_wd, step):
+            # xmin <= amt <= xmax
+            amt = x / eff_wd
+            setattr(col, f1, map_to_range(v.xmin, v.xmax, amt))
+            # ymin <= f2 <= ymax
+            setattr(col, f2, v.ymax)
+            lg = cairo.LinearGradient(b + x, b, b + x, b + eff_ht)
+            lg.add_color_stop_rgb(*([0.0] + list(col.get_rgb())))
+            setattr(col, f2, v.ymin)
+            lg.add_color_stop_rgb(*([1.0] + list(col.get_rgb())))
+            cr.rectangle(b + x, b, step, eff_ht)
+            cr.set_source(lg)
+            cr.fill()
+        slice_patt = cr.pop_group()
+
+        # Tango-like outline
+        cr.set_line_join(cairo.LINE_JOIN_ROUND)
+        cr.rectangle(rect_x, rect_y, rect_w, rect_h)
+        cr.set_line_width(self.OUTLINE_WIDTH)
+        cr.set_source_rgba(*self.OUTLINE_RGBA)
+        cr.stroke()
+
+        # The main area
+        cr.set_source(slice_patt)
+        cr.paint()
+
+        # Tango-like highlight over the top
+        cr.rectangle(rect_x, rect_y, rect_w, rect_h)
+        cr.set_line_width(self.EDGE_HIGHLIGHT_WIDTH)
+        cr.set_source_rgba(*self.EDGE_HIGHLIGHT_RGBA)
+        cr.stroke()
+
+    def get_background_validity(self):
+        col = self.__get_central_color()
+        ccol = self.get_managed_color()
+        v = self._conf.get_value()
+        val = (
+            f"{repr(col)}{repr(ccol)}{v.refval[0]}{v.xref[0]}{v.yref[0]}",
+            v.xmin,
+            v.xmax,
+            v.ymin,
+            v.ymax,
+        )
+        return val
+
+    def get_color_at_position(self, x, y):
+        alloc = self.get_allocation()
+        v = self._conf.get_value()
+        b = self.BORDER_WIDTH
+        wd = alloc.width
+        ht = alloc.height
+        eff_wd = wd - 2 * b
+        eff_ht = ht - 2 * b
+        f1_amt = clamp((x - b) / eff_wd, 0, 1)
+        f2_amt = clamp((y - b) / eff_ht, 0, 1)
+        col = self.__get_central_color()
+        f1, f2 = self.__get_faces()
+        f2_amt = 1.0 - f2_amt
+        setattr(col, f1, map_to_range(v.xmin, v.xmax, f1_amt))
+        setattr(col, f2, map_to_range(v.ymin, v.ymax, f2_amt))
+        return col
+
+    def get_position_for_color(self, col):
+        v = self._conf.get_value()
+        _, f1_amt, f2_amt = v.in_range(col)
+        f2_amt = 1 - f2_amt
+        alloc = self.get_allocation()
+        b = self.BORDER_WIDTH
+        wd = alloc.width
+        ht = alloc.height
+        eff_wd = wd - 2 * b
+        eff_ht = ht - 2 * b
+        x = b + f1_amt * eff_wd
+        y = b + f2_amt * eff_ht
+        return x, y
+
+    def paint_foreground_cb(self, cr, wd, ht):
+        inrange, _, _ = self._conf.get_value().in_range(self.get_managed_color())
+        x, y = self.get_position_for_color(self.get_managed_color())
+        print(f"paint foreground: x {x}, y {y}")
+        if inrange:
+            draw_marker_circle(cr, x, y)
+
+
 class ColorRangeConfiguration(Configuration):
     def __init__(
         self,
@@ -323,6 +457,12 @@ class ColorRangeConfiguration(Configuration):
         self._color_mgrs = {}
         self._color_sliders = {}
 
+        from gui.application import get_app
+
+        app = get_app()
+        self._cube = ColorRangeCube(self)
+        self._cube.color_manager = app.brush_color_manager
+
     def specific_setup(self, pref_path, value):
         v = self.get_value()
         self._color_sliders["target"] = v.references[v.refval][1]()
@@ -336,6 +476,7 @@ class ColorRangeConfiguration(Configuration):
                 self._color_sliders[m], m, self, self._loc_prefs[m], ""
             )
             self._color_sliders[m].set_hexpand(True)
+            self._color_mgrs[m].add_adjuster(self._cube)
 
         for m, mgr in self._color_mgrs.items():
             if m != "target":
@@ -492,6 +633,8 @@ class ColorRangeConfiguration(Configuration):
 
         grid.attach(self._color_sliders["ymin"], 1, 2, 1, 1)
         grid.attach(self._color_sliders["ymax"], 2, 2, 1, 1)
+
+        grid.attach(self._cube, 1, 3, 2, 3)
 
         return grid
 
