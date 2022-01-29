@@ -18,6 +18,7 @@ from .configurable import (
     NumericConfiguration,
     ListConfiguration,
     SliderConfiguration,
+    BoolConfiguration,
 )
 from .colorrange import ColorRangeConfiguration, ThreeValueColorRange
 from gui.colors.sliders import HCYLumaSlider
@@ -37,8 +38,19 @@ class ColorConsumer(threading.Thread, Configurable):
             self.players = [players]
         self._cid = _consumers_ids[-1] + 1
         _consumers_ids.append(self._cid)
-        Configurable.__init__(self, subconfigs=self.players + [self.renderer])
+        enabled = BoolConfiguration("Enabled", "enabled", True)
+        Configurable.__init__(
+            self,
+            confmap={"enabled": enabled},
+            subconfigs=self.players + [self.renderer],
+        )
         self.queue = queue.SimpleQueue()
+
+        def toggle_enabled(t):
+            if not t.get_active():
+                self.stop()
+
+        enabled.toggle.connect("toggled", toggle_enabled)
 
     def run(self) -> None:
         while True:
@@ -51,7 +63,8 @@ class ColorConsumer(threading.Thread, Configurable):
             p.stop()
 
     def data_ready(self, color_column):
-        self.queue.put(color_column, False)
+        if self.enabled:
+            self.queue.put(color_column, False)
 
     # subclasses must implement this method
     def process_data(self, color_column) -> ([int], int):
