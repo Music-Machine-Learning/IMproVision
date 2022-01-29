@@ -60,6 +60,34 @@ class Configuration:
         raise NotImplementedError
 
 
+class BoolConfiguration(Configuration):
+    def __init__(self, name: str, pref_path: str, default_val: bool):
+        super().__init__(name, pref_path, default_val)
+        self.toggle = None
+        self.btn_label = Gtk.Label()
+        self.toggle = Gtk.ToggleButton()
+        self.toggle.add(self.btn_label)
+
+    def specific_setup(self, pref_path, value):
+        self.toggle.set_active(value)
+
+        def _value_changed_cb(t):
+            self._set_value(self.get_value())
+            if self.get_value():
+                self.btn_label.set_text("On")
+            else:
+                self.btn_label.set_text("Off")
+
+        self.toggle.connect("toggled", _value_changed_cb)
+        _value_changed_cb(self.toggle)
+
+    def get_value(self):
+        return self.toggle.get_active()
+
+    def _get_gui_item(self):
+        return self.toggle
+
+
 class NumericConfiguration(Configuration):
     def __init__(
         self,
