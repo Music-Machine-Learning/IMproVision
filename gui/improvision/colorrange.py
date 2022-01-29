@@ -434,7 +434,6 @@ class ColorRangeCube(ColorAdjusterWidget):
     def paint_foreground_cb(self, cr, wd, ht):
         inrange, _, _ = self._conf.get_value().in_range(self.get_managed_color())
         x, y = self.get_position_for_color(self.get_managed_color())
-        print(f"paint foreground: x {x}, y {y}")
         if inrange:
             draw_marker_circle(cr, x, y)
 
