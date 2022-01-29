@@ -201,7 +201,7 @@ class Configurable(object):
         self._parent = None
         self.label = None
         self.name = None
-        self.confmap = {}
+        self._confmap = {}
         self._subconfigs = []
         self.expanded = expanded
         self.setup_configurable(label, name, confmap, subconfigs)
@@ -212,6 +212,7 @@ class Configurable(object):
         name: str = None,
         confmap: {str: Configuration} = None,
         subconfigs=None,
+        reset_confmap: bool = False,
     ):
         if label is not None:
             self.label = label
@@ -227,7 +228,10 @@ class Configurable(object):
             c._parent = self
 
         if confmap is not None:
-            self._confmap = confmap
+            if reset_confmap:
+                self._confmap = confmap
+            else:
+                self._confmap.update(confmap)
 
     def add_configurations(self, confmap: {str: Configuration}):
         if confmap is not None:
