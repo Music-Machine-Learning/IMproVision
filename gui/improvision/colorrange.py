@@ -8,7 +8,20 @@
 
 from lib.gibindings import Gtk
 from lib import color
-from .configurable import Configuration
+from .configurable import Configuration, SliderConfiguration
+from gui.colors.sliders import (
+    RGBRedSlider,
+    RGBBlueSlider,
+    RGBGreenSlider,
+    HSVHueSlider,
+    HSVSaturationSlider,
+    HSVValueSlider,
+)
+from gui.colors import ColorManager
+from gui.colors.adjbases import SliderColorAdjuster
+
+from functools import partial
+from lib.color import RGBColor, HSVColor
 
 
 def map_to_percent(minv, maxv, val):
@@ -35,7 +48,7 @@ class ThreeValueColorRange(dict):
 
     def __rv_from_index(self, index):
         for rn, rv in self.references.items():
-            if rv == index:
+            if rv[0] == index:
                 return rn
         raise AttributeError("unknown parameter index: {}".format(index))
 
@@ -54,7 +67,7 @@ class ThreeValueColorRange(dict):
     @refval.setter
     def refval(self, val):
         self["refval"] = val
-        self.refid = self.references[val]
+        self.refid = self.references[val][0]
 
     @property
     def target(self):
@@ -79,10 +92,10 @@ class ThreeValueColorRange(dict):
     @xref.setter
     def xref(self, val):
         self["xref"] = val
-        self.xid = self.references[val]
+        self.xid = self.references[val][0]
         yval = self.__rv_from_index(3 - self.refid - self.xid)
         self["yref"] = yval
-        self.yid = self.references[yval]
+        self.yid = self.references[yval][0]
 
     @property
     def xmin(self):
@@ -202,10 +215,11 @@ class ThreeValueColorRange(dict):
 
 class HSVColorRange(ThreeValueColorRange):
     type = "HSV"
+    base_color = HSVColor(0, 1, 1)
     references = {
-        "hue": 0,
-        "saturation": 1,
-        "value": 2,
+        "hue": (0, HSVHueSlider),
+        "saturation": (1, HSVSaturationSlider),
+        "value": (2, HSVValueSlider),
     }
 
     def in_range(self, color: color.UIColor) -> (bool, float, float):
@@ -229,10 +243,11 @@ class HSVColorRange(ThreeValueColorRange):
 
 class RGBColorRange(ThreeValueColorRange):
     type = "RGB"
+    base_color = RGBColor(0, 0, 0)
     references = {
-        "red": 0,
-        "green": 1,
-        "blue": 2,
+        "red": (0, RGBRedSlider),
+        "green": (1, RGBGreenSlider),
+        "blue": (2, RGBBlueSlider),
     }
 
     def in_range(self, color: color.UIColor) -> (bool, float, float):
@@ -260,6 +275,32 @@ threevaluecolorrangetypes = [
 ]
 
 
+class ColorRangeManager(ColorManager):
+    _DEFAULT_HIST = ["#000000"]
+
+    def __init__(self, slider, ref, conf, prefs, datapath):
+        super().__init__(prefs, datapath)
+        self._children_mgrs = []
+        self._slider = slider
+        self._ref = ref
+        self._conf = conf
+        slider.set_color_manager(self)
+        self.force_redraw = False
+
+    def add_chld_mgr(self, chld_mgr):
+        self._children_mgrs.append(chld_mgr)
+
+    def set_color(self, color):
+        super().set_color(color)
+        v = self._conf.get_value()
+        v[self._ref] = self._slider.get_bar_amount_for_color(color)
+        self._conf._set_value(v)
+        for ch in self._children_mgrs:
+            pos = ch._slider.get_bar_amount_for_color(ch.color)
+            ch.set_color(self.color)
+            ch.set_color(ch._slider.get_color_for_bar_amount(pos))
+
+
 class ColorRangeConfiguration(Configuration):
     def __init__(
         self,
@@ -274,8 +315,33 @@ class ColorRangeConfiguration(Configuration):
             for r in t.references.keys():
                 self.__refs[r] = t
 
+        self._loc_prefs = {"target": {}, "xmin": {}, "xmax": {}, "ymin": {}, "ymax": {}}
+        self._color_mgrs = {}
+        self._color_sliders = {}
+
     def specific_setup(self, pref_path, value):
-        pass
+        v = self.get_value()
+        self._color_sliders["target"] = v.references[v.refval][1]()
+        self._color_sliders["xmin"] = v.references[v.xref][1]()
+        self._color_sliders["xmax"] = v.references[v.xref][1]()
+        self._color_sliders["ymin"] = v.references[v.yref][1]()
+        self._color_sliders["ymax"] = v.references[v.yref][1]()
+
+        for m in self._loc_prefs:
+            self._color_mgrs[m] = ColorRangeManager(
+                self._color_sliders[m], m, self, self._loc_prefs[m], ""
+            )
+            self._color_sliders[m].set_hexpand(True)
+
+        for m in self._loc_prefs:
+            if m != "target":
+                self._color_mgrs["target"].add_chld_mgr(self._color_mgrs[m])
+
+        for m, slider in self._color_sliders.items():
+            print(
+                f"setting default value for slider {m}: {v[m]} ({slider.get_color_for_bar_amount(v[m])})"
+            )
+            slider.set_managed_color(slider.get_color_for_bar_amount(v[m]))
 
     def _get_gui_item(self):
         grid = Gtk.Grid()
@@ -283,15 +349,76 @@ class ColorRangeConfiguration(Configuration):
         self.xref = Gtk.ComboBoxText()
         self.yref = Gtk.Label()
 
+        def _setup_slider(slider, settype: SliderColorAdjuster, reset_color=None):
+            pos = slider.get_bar_amount_for_color(slider.managed_color)
+
+            def forced_get_background_validity(slider):
+                if slider.color_manager.force_redraw:
+                    col = slider.get_managed_color()
+                    if col.r > 0:
+                        col = RGBColor(0, col.g, col.b)
+                    else:
+                        col = RGBColor(255, col.g, col.b)
+                    slider.color_manager.force_redraw = False
+                    return repr(col)
+                return SliderColorAdjuster.get_background_validity(slider)
+
+            setattr(
+                slider,
+                "get_background_validity",
+                partial(forced_get_background_validity, slider),
+            )
+            setattr(
+                slider,
+                "get_color_for_bar_amount",
+                partial(settype.get_color_for_bar_amount, slider),
+            )
+            setattr(
+                slider,
+                "get_bar_amount_for_color",
+                partial(settype.get_bar_amount_for_color, slider),
+            )
+            setattr(slider, "samples", settype.samples)
+            slider.color_manager.force_redraw = True
+
+            if reset_color is not None:
+                slider.color_manager.set_color(reset_color)
+            newcol = slider.get_color_for_bar_amount(pos)
+            print(f"setting slider {slider.color_manager._ref} to pos {pos} ({newcol})")
+            slider.color_manager.set_color(newcol)
+
         def _update_xref(combo):
             xref = combo.get_active_text()
             v = self.get_value()
             if xref in v.references:
                 v.xref = xref
                 self._set_value(v)
-                for r in self.get_value().references.keys():
-                    if r == self.get_value().yref:
+                v = self.get_value()
+
+                for r in v.references.keys():
+                    if r == v.yref:
                         self.yref.set_text(r)
+
+            _setup_slider(
+                self._color_sliders["xmin"],
+                v.references[v.xref][1],
+                self._color_sliders["target"].managed_color,
+            )
+            _setup_slider(
+                self._color_sliders["xmax"],
+                v.references[v.xref][1],
+                self._color_sliders["target"].managed_color,
+            )
+            _setup_slider(
+                self._color_sliders["ymin"],
+                v.references[v.yref][1],
+                self._color_sliders["target"].managed_color,
+            )
+            _setup_slider(
+                self._color_sliders["ymax"],
+                v.references[v.yref][1],
+                self._color_sliders["target"].managed_color,
+            )
 
         def _update_refval(combo):
             ref = combo.get_active_text()
@@ -317,18 +444,25 @@ class ColorRangeConfiguration(Configuration):
                             newv.xref = xr
                             break
                 self._set_value(newv)
+                v = self.get_value()
 
                 activeid = 0
-                refs = list(self.get_value().references.keys())
+                refs = list(v.references.keys())
                 self.xref.remove_all()
                 for r in range(len(refs)):
-                    if refs[r] != self.get_value().refval:
+                    if refs[r] != v.refval:
                         self.xref.append_text(refs[r])
-                        if refs[r] == self.get_value().xref:
+                        if refs[r] == v.xref:
                             activeid = r
                 self.xref.set_active(activeid)
 
-                _update_xref(self.xref)
+                _setup_slider(
+                    self._color_sliders["target"],
+                    v.references[v.refval][1],
+                    v.base_color,
+                )
+
+            _update_xref(self.xref)
 
         rvbox = Gtk.ComboBoxText()
         rvbox.connect("changed", _update_refval)
@@ -342,63 +476,20 @@ class ColorRangeConfiguration(Configuration):
 
         grid.attach(rvbox, 0, 0, 1, 1)
 
-        def create_valspinner(cb, value):
-            valspinner = Gtk.SpinButton()
-            adj = Gtk.Adjustment(
-                value=value,
-                lower=0,
-                upper=1,
-                step_incr=0.01,
-                page_incr=0.1,
-            )
-
-            adj.connect("value-changed", cb)
-            valspinner.set_hexpand(True)
-            valspinner.set_adjustment(adj)
-            valspinner.set_digits(3)
-            return valspinner
-
-        def _target_changed(a):
-            v = self.get_value()
-            v.target = a.get_value()
-            self._set_value(v)
-
-        grid.attach(
-            create_valspinner(_target_changed, self.get_value().target), 1, 0, 2, 1
-        )
+        grid.attach(self._color_sliders["target"], 1, 0, 2, 1)
 
         self.xref.connect("changed", _update_xref)
         _update_refval(rvbox)
 
         grid.attach(self.xref, 0, 1, 1, 1)
 
-        def _xmin_changed(a):
-            v = self.get_value()
-            v.xmin = a.get_value()
-            self._set_value(v)
-
-        def _xmax_changed(a):
-            v = self.get_value()
-            v.xmax = a.get_value()
-            self._set_value(v)
-
-        grid.attach(create_valspinner(_xmin_changed, self.get_value().xmin), 1, 1, 1, 1)
-        grid.attach(create_valspinner(_xmax_changed, self.get_value().xmax), 2, 1, 1, 1)
+        grid.attach(self._color_sliders["xmin"], 1, 1, 1, 1)
+        grid.attach(self._color_sliders["xmax"], 2, 1, 1, 1)
 
         grid.attach(self.yref, 0, 2, 1, 1)
 
-        def _ymin_changed(a):
-            v = self.get_value()
-            v.ymin = a.get_value()
-            self._set_value(v)
-
-        def _ymax_changed(a):
-            v = self.get_value()
-            v.ymax = a.get_value()
-            self._set_value(v)
-
-        grid.attach(create_valspinner(_ymin_changed, self.get_value().ymin), 1, 2, 1, 1)
-        grid.attach(create_valspinner(_ymax_changed, self.get_value().ymax), 2, 2, 1, 1)
+        grid.attach(self._color_sliders["ymin"], 1, 2, 1, 1)
+        grid.attach(self._color_sliders["ymax"], 2, 2, 1, 1)
 
         return grid
 

@@ -114,19 +114,19 @@ class ThreeValueColorConsumer(ColorConsumer, Configurable):
         self,
         renderer: NoteRenderer,
         players: [NotePlayer],
-        colorrange: ThreeValueColorRange,
+        default_range: ThreeValueColorRange,
     ):
 
         ColorConsumer.__init__(self, renderer, players)
 
         self.setup_configurable(
-            f"{colorrange.type} Detector",
-            colorrange.type.lower() + "-" + str(self._cid),
+            "Color Detector",
+            "color-" + str(self._cid),
             confmap={
                 "colorrange": ColorRangeConfiguration(
                     "Color range",
                     "color_range",
-                    colorrange,
+                    default_range,
                 ),
             },
         )
