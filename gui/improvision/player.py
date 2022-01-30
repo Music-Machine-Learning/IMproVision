@@ -15,6 +15,37 @@ from .note import Note
 _midi_devices = {}
 
 
+class ControlValue:
+    """
+    represents a midi control change event
+    """
+
+    def __init__(self, control: int, value: int = 0):
+        self.control = control
+        self.value = value
+
+    def __str__(self):
+        return f"CC {self.control}: {self.value}"
+
+    def __repr__(self):
+        return str(self)
+
+
+class ProgramChange:
+    """
+    represents a midi program change event
+    """
+
+    def __init__(self, program):
+        self.program = program
+
+    def __str__(self):
+        return f"PC {self.program}"
+
+    def __repr__(self):
+        return str(self)
+
+
 class NotePlayer(Configurable):
     def __init__(self):
         super().__init__()
@@ -45,6 +76,12 @@ class NotePlayer(Configurable):
     def notes_off(self, notes: set[Note]):
         raise NotImplementedError
 
+    def send_cc(self, control: ControlValue):
+        raise NotImplementedError
+
+    def send_pc(self, program: ProgramChange):
+        raise NotImplementedError
+
 
 class LogPlayer(NotePlayer):
     def __init__(self):
@@ -56,8 +93,16 @@ class LogPlayer(NotePlayer):
     def notes_off(self, notes: set[Note]):
         print("notes off: {}, active_notes: {}".format(notes, self.active_notes))
 
+    def send_cc(self, control):
+        print(f"control change: {control}")
+
+    def send_pc(self, program):
+        print(f"program change: {program}")
+
 
 class MidiPlayer(NotePlayer):
+    MODES = ["note", "cv", "program"]
+
     def __init__(self, channel=1, device_id=None):
         super().__init__()
         self.output = None
@@ -83,13 +128,30 @@ class MidiPlayer(NotePlayer):
             combo.connect("changed", _set_dev_cb)
             self.set_device(self.device)
 
-        self.setup_configurable("MIDI Output", "midi", confmap={
-            "channel": NumericConfiguration(
-                "MIDI Channel", "channel", Gtk.SpinButton,
-                channel, 1, 16, step_incr=1, page_incr=1
-            ),
-            "device": ListConfiguration("MIDI Device", "device", dfldev, mididevs, gui_setup_cb=config_devbox),
-        })
+        self.setup_configurable(
+            "MIDI Output",
+            "midi",
+            confmap={
+                # "mode": ListConfiguration("Output Mode", "mode", default_val, items),
+                "channel": NumericConfiguration(
+                    "MIDI Channel",
+                    "channel",
+                    Gtk.SpinButton,
+                    channel,
+                    1,
+                    16,
+                    step_incr=1,
+                    page_incr=1,
+                ),
+                "device": ListConfiguration(
+                    "MIDI Device",
+                    "device",
+                    dfldev,
+                    mididevs,
+                    gui_setup_cb=config_devbox,
+                ),
+            },
+        )
 
     def set_device(self, device_id):
         device_id = int(device_id)
@@ -102,12 +164,23 @@ class MidiPlayer(NotePlayer):
     def notes_on(self, notes: set[Note]):
         if isinstance(self.output, midi.Output):
             for n in notes:
-                self.output.note_on(n.note, velocity=127, channel=int(self.channel)-1)
+                self.output.note_on(
+                    n.note, velocity=n.velocity, channel=int(self.channel) - 1
+                )
 
     def notes_off(self, notes: set[Note]):
         if isinstance(self.output, midi.Output):
             for n in notes:
-                self.output.note_off(n.note, velocity=0, channel=int(self.channel)-1)
+                self.output.note_off(n.note, velocity=0, channel=int(self.channel) - 1)
+
+    def send_cc(self, control: ControlValue):
+        if isinstance(self.output, midi.Output):
+            status = 0xB0 + int(self.channel) - 1
+            self.output.write_short(status, control.control, control.value)
+
+    def send_pc(self, program: ProgramChange):
+        if isinstance(self.output, midi.Output):
+            self.output.set_instrument(program.program, channel=int(self.channel) - 1)
 
 
 class MonoMidiPlayer(MidiPlayer):
@@ -125,4 +198,3 @@ class MonoMidiPlayer(MidiPlayer):
         else:
             pn = notes
         super().play(pn)
-
