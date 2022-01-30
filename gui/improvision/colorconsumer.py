@@ -11,8 +11,9 @@ import threading
 import queue
 
 from lib.gibindings import Gtk
-from .noterenderer import NoteRenderer
-from .player import NotePlayer
+from .eventrenderer import EventRenderer
+from .event import Event
+from .player import EventPlayer
 from .configurable import (
     Configurable,
     NumericConfiguration,
@@ -29,9 +30,24 @@ _consumers_ids = [0]
 
 
 class ColorConsumer(threading.Thread, Configurable):
-    def __init__(self, renderer: NoteRenderer, players: [NotePlayer]):
+    """
+    base consumer class, implements top level processing logic
+
+    each consumer has a list of renderers and a list of playes
+
+    if the consumer is enabled, at each scan cycle, the whole pixel column is sent to the
+    local process_data function, which should search for matching areas, the areas are then
+    converted to a percentual value and each matching percentual value generates an output
+    play point.
+
+    the process data should generate a list of play points for each active renderer, these
+    points are then passed to the renderers and the output generated from the renderers is
+    merged and sent to all the known players for actual output
+    """
+
+    def __init__(self, renderers: [EventRenderer], players: [EventPlayer]):
         threading.Thread.__init__(self, daemon=True)
-        self.renderer = renderer
+        self.renderers = renderers
         if type(players) is list:
             self.players = players
         else:
@@ -42,7 +58,7 @@ class ColorConsumer(threading.Thread, Configurable):
         Configurable.__init__(
             self,
             confmap={"enabled": enabled},
-            subconfigs=self.players + [self.renderer],
+            subconfigs=self.players + self.renderers,
         )
         self.queue = queue.SimpleQueue()
 
@@ -54,9 +70,13 @@ class ColorConsumer(threading.Thread, Configurable):
 
     def run(self) -> None:
         while True:
-            notes = self.renderer.render(self.process_data(self.queue.get(True, None)))
+            event = Event()
+            playpoints_list = self.process_data(self.queue.get(True, None))
+            for r in range(min(len(self.renderers), len(playpoints_list))):
+                # avoid errors, if too few renderers or playpoints are available only process what we can
+                event.merge(self.renderers[r].render(playpoints_list[r]))
             for p in self.players:
-                p.play(notes)
+                p.play(event)
 
     def stop(self):
         for p in self.players:
@@ -67,19 +87,25 @@ class ColorConsumer(threading.Thread, Configurable):
             self.queue.put(color_column, False)
 
     # subclasses must implement this method
-    def process_data(self, color_column) -> ([int], int):
+    def process_data(self, color_column) -> [[float]]:
+        """
+        process a scanline
+        :param color_column: a list of pixel data reflecting the currently processed scanline
+        :return a list of lists of float, each inner element is a single play point (0~1),
+                each list of play points is meant for the renderer at the same index
+        """
         raise NotImplementedError
 
 
 class LumaConsumer(ColorConsumer, Configurable):
     def __init__(
         self,
-        renderer: NoteRenderer,
-        players: [NotePlayer],
+        renderer: EventRenderer,
+        players: [EventPlayer],
         minluma: float,
         maxluma: float,
     ):
-        ColorConsumer.__init__(self, renderer, players)
+        ColorConsumer.__init__(self, [renderer], players)
 
         def configureDecimalSpinbuttons(sb: Gtk.SpinButton):
             sb.set_digits(2)
@@ -97,8 +123,8 @@ class LumaConsumer(ColorConsumer, Configurable):
             },
         )
 
-    def process_data(self, color_column):
-        notes = []
+    def process_data(self, color_column) -> [[float]]:
+        playpoints = []
         window = 0
         windowsize = 0
         maxv = len(color_column)
@@ -115,22 +141,29 @@ class LumaConsumer(ColorConsumer, Configurable):
                 windowsize += 1
             else:
                 if windowsize > 0:
-                    notes.append(maxv - int(window / windowsize))
+                    playpoints.append(1 - ((window / windowsize) / maxv))
                     window = 0
                     windowsize = 0
 
-        return (notes, maxv)
+        return [playpoints]
 
 
 class ThreeValueColorConsumer(ColorConsumer, Configurable):
     def __init__(
         self,
-        renderer: NoteRenderer,
-        players: [NotePlayer],
+        hrenderer: EventRenderer,
+        xrenderer: EventRenderer,
+        yrenderer: EventRenderer,
+        players: [EventPlayer],
         default_range: ThreeValueColorRange,
     ):
+        """
+        :param hrenderer: height renderer, will receive the graphical height of the matched color
+        :param xrenderer: x component renderer, will receive the percent of x color component
+        :param yrenderer: y component renderer, will receive the percent of the y color component
+        """
 
-        ColorConsumer.__init__(self, renderer, players)
+        ColorConsumer.__init__(self, [hrenderer, xrenderer, yrenderer], players)
 
         self.setup_configurable(
             "Color Detector",
@@ -145,8 +178,11 @@ class ThreeValueColorConsumer(ColorConsumer, Configurable):
         )
 
     def process_data(self, color_column: [color.RGBColor]):
-        notes = []
-        window = 0
+        hplaypoints = []
+        xplaypoints = []
+        yplaypoints = []
+
+        window = [0, 0, 0]
         windowsize = 0
 
         cr = self.colorrange
@@ -156,12 +192,16 @@ class ThreeValueColorConsumer(ColorConsumer, Configurable):
             match, xv, yv = cr.in_range(color_column[y])
 
             if match:
-                window += y
+                window[0] += y
+                window[1] += xv
+                window[2] += yv
                 windowsize += 1
             else:
                 if windowsize > 0:
-                    notes.append(maxv - int(window / windowsize))
-                    window = 0
+                    hplaypoints.append(1 - ((window[0] / windowsize) / maxv))
+                    xplaypoints.append(window[1] / windowsize)
+                    yplaypoints.append(window[2] / windowsize)
+                    window[0] = window[1] = window[2] = 0
                     windowsize = 0
 
-        return (notes, maxv)
+        return [hplaypoints, xplaypoints, yplaypoints]
