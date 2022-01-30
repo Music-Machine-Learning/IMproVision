@@ -26,22 +26,7 @@ from gui.colors.util import draw_marker_circle, clamp
 
 from functools import partial
 from lib.color import RGBColor, HSVColor
-
-
-def map_to_percent(minv, maxv, val):
-    if minv > maxv:
-        return (val - maxv) / (minv - maxv)
-    elif minv == maxv:
-        return 0
-    return (val - minv) / (maxv - minv)
-
-
-def map_to_range(minv, maxv, pct):
-    if minv > maxv:
-        return maxv + (pct * (minv - maxv))
-    elif minv == maxv:
-        return minv
-    return minv + (pct * (maxv - minv))
+from .utils import map_to_percent, map_to_range
 
 
 class ThreeValueColorRange(dict):
