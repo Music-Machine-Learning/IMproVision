@@ -99,7 +99,7 @@ class IMproVision(gui.overlays.Overlay, Configurable):
 
         Configurable.__init__(
             self,
-            "IMproVision",
+            None,
             "improvision",
             {
                 "bpm": NumericConfiguration(
