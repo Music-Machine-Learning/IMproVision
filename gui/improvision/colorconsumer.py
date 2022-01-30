@@ -165,6 +165,10 @@ class ThreeValueColorConsumer(ColorConsumer, Configurable):
 
         ColorConsumer.__init__(self, [hrenderer, xrenderer, yrenderer], players)
 
+        hrenderer.label += " (height)"
+        xrenderer.label += " (color x)"
+        yrenderer.label += " (color y)"
+
         self.setup_configurable(
             "Color Detector",
             "color-" + str(self._cid),
