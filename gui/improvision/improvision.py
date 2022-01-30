@@ -20,8 +20,8 @@ from lib.gibindings import Gtk
 import gui.overlays
 import gui.drawutils
 from gui.framewindow import FrameOverlay
-from . import colorconsumer, noterenderer, player, colorrange
-from .note import Note
+from . import colorconsumer, eventrenderer, player, colorrange
+from .event import Note
 from .configurable import Configurable, NumericConfiguration
 
 
@@ -76,18 +76,22 @@ class IMproVision(gui.overlays.Overlay, Configurable):
         # XXX: setup note consumers here
         self.consumers = [
             colorconsumer.LumaConsumer(
-                noterenderer.DiatonicRenderer(Note("A1"), 3, "minor pentatonic"),
+                eventrenderer.DiatonicRenderer(Note("A1"), 3, "minor pentatonic"),
                 [player.MidiPlayer(channel=0)],
                 0,
                 0.1,
             ),
             colorconsumer.ThreeValueColorConsumer(
-                noterenderer.DiatonicRenderer(Note("C2"), 5, "major pentatonic"),
+                eventrenderer.DiatonicRenderer(Note("C2"), 5, "major pentatonic"),
+                eventrenderer.ControlChangeRenderer(7, 0, 127),
+                eventrenderer.ControlChangeRenderer(9, 0, 127),
                 [player.MidiPlayer(channel=1)],
                 colorrange.HSVColorRange("hue", 0, "saturation", (0.8, 1), (0.4, 0.6)),
             ),
             colorconsumer.ThreeValueColorConsumer(
-                noterenderer.DiatonicRenderer(Note("C2"), 5, "major pentatonic"),
+                eventrenderer.DiatonicRenderer(Note("C2"), 5, "major pentatonic"),
+                eventrenderer.ControlChangeRenderer(7, 0, 127),
+                eventrenderer.ControlChangeRenderer(9, 0, 127),
                 [player.MidiPlayer(channel=1)],
                 colorrange.RGBColorRange("red", 0, "green", (0.8, 1), (0.4, 0.6)),
             ),
