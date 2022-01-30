@@ -16,6 +16,7 @@ from .event import Event
 from .player import EventPlayer
 from .configurable import (
     Configurable,
+    Configuration,
     NumericConfiguration,
     ListConfiguration,
     SliderConfiguration,
@@ -59,8 +60,10 @@ class ColorConsumer(threading.Thread, Configurable):
             self,
             confmap={"enabled": enabled},
             subconfigs=self.players + self.renderers,
+            removable=True,
         )
         self.queue = queue.SimpleQueue()
+        self._should_exit = False
 
         def toggle_enabled(t):
             if not t.get_active():
@@ -69,14 +72,18 @@ class ColorConsumer(threading.Thread, Configurable):
         enabled.toggle.connect("toggled", toggle_enabled)
 
     def run(self) -> None:
-        while True:
+        while not self._should_exit:
             event = Event()
-            playpoints_list = self.process_data(self.queue.get(True, None))
+            data = self.queue.get(True, None)
+            if self._should_exit:
+                break
+            playpoints_list = self.process_data(data)
             for r in range(min(len(self.renderers), len(playpoints_list))):
                 # avoid errors, if too few renderers or playpoints are available only process what we can
                 event.merge(self.renderers[r].render(playpoints_list[r]))
             for p in self.players:
                 p.play(event)
+        p.stop()
 
     def stop(self):
         for p in self.players:
@@ -85,6 +92,13 @@ class ColorConsumer(threading.Thread, Configurable):
     def data_ready(self, color_column):
         if self.enabled:
             self.queue.put(color_column, False)
+
+    def remove(self, _):
+        super().remove(_)
+        self.enabled = False
+        self._should_exit = True
+        self.data_ready([])
+        p.stop()
 
     # subclasses must implement this method
     def process_data(self, color_column) -> [[float]]:
@@ -95,6 +109,20 @@ class ColorConsumer(threading.Thread, Configurable):
                 each list of play points is meant for the renderer at the same index
         """
         raise NotImplementedError
+
+
+class ConsumerWidget(Configurable):
+    """
+    widget holding the actual active consumers, stores the list in preferences and handles
+    addition and removal of active consumers
+    """
+
+    def __init__(self, name: str):
+        super().__init__(name=name)
+        self.active_consumers = Configuration(name, self.get_prefpath(), [])
+
+    def add_to_grid(self, grid, row):
+        pass
 
 
 class LumaConsumer(ColorConsumer, Configurable):

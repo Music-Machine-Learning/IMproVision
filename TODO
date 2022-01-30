@@ -1,4 +1,3 @@
-- aggiungere un pulsante al blocco del consumer per rimuovere il consumer
 - aggiungere un pulsante in fondo alla lista dei consumer per aggiungere un nuovo consumer
 - finestra di configurazione di un nuovo consumer (prototipo nel consumer generale, implementazioni locali per impostare i parametri, i.e. tipi di renderer), alla pressione del pulsante di aggiunta viene mostrata la finestra e viene aggiunto il nuovo consumer
 - finestra di configurazione della scala custom
