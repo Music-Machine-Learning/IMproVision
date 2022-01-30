@@ -8,7 +8,9 @@
 
 
 import math
-from .configurable import Configuration
+import re
+from typing import List
+from .configurable import Configuration, NumericConfiguration
 
 from lib.gibindings import Gtk
 
@@ -192,6 +194,99 @@ class Note:
             self.bend = 127 + self.bend
 
         self.__validate__()
+
+
+class ControlValue:
+    """
+    represents a midi control change event
+    """
+
+    def __init__(self, control: int, value: int = 0):
+        self.control = int(control)
+        self.value = int(value)
+
+        if self.control < 0 or self.control > 127:
+            raise AttributeError(
+                "self.control {} out of midi range".format(self.control)
+            )
+        if self.value < 0 or self.value > 127:
+            raise AttributeError("self.value {} out of midi range".format(self.value))
+
+    def __str__(self):
+        return f"<{self.control}>{self.value}"
+
+    def __repr__(self):
+        return f"CC {self.control}: {self.value}"
+
+    def __eq__(self, other):
+        return self.control == other.control and self.value == other.value
+
+    def __lt__(self, other):
+        return self.control < other.control or (
+            self.control == other.control and self.value < other.value
+        )
+
+    def __hash__(self):
+        return hash((self.control, self.value))
+
+    @staticmethod
+    def from_str(strdef: str):
+        m = re.match("<([0-9]+)>([0-9]+)$", strdef)
+        if m is None:
+            raise ValueError(
+                f"{strdef} is not a valid control change string (must be in the format '<CC>Value')"
+            )
+        return ControlValue(int(m.group(1), int(m.group(2))))
+
+
+class ProgramChange:
+    """
+    represents a midi program change event
+    """
+
+    def __init__(self, program):
+        self.program = int(program)
+
+        if self.program < 0 or self.program > 127:
+            raise AttributeError("program {} out of midi range".format(self.program))
+
+    def __str__(self):
+        return str(self.program)
+
+    def __repr__(self):
+        return f"PC {self.program}"
+
+    @staticmethod
+    def from_str(strdef: str):
+        return ProgramChange(int(strdef))
+
+    def __eq__(self, other):
+        return self.program == other.program
+
+    def __lt__(self, other):
+        return self.program < other.program
+
+
+class Event:
+    """
+    represents an output event (note, control or program change set)
+    """
+
+    def __init__(
+        self,
+        notes: List[Note] = [],
+        controls: List[ControlValue] = [],
+        program: ProgramChange = None,
+    ):
+        self.notes = set(notes)
+        self.controls = set(controls)
+        self.program = program
+
+    def merge(self, other):
+        self.notes |= other.notes
+        self.controls |= other.controls
+        if self.program is None:
+            self.program = other.program
 
 
 class NoteConfiguration(Configuration):
