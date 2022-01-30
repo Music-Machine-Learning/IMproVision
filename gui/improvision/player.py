@@ -10,7 +10,7 @@
 from pygame import midi
 from .configurable import Configurable, NumericConfiguration, ListConfiguration
 from lib.gibindings import Gtk
-from .note import Note, Event, ControlValue, ProgramChange
+from .event import Note, Event, ControlValue, ProgramChange
 
 _midi_devices = {}
 
