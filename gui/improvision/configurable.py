@@ -227,6 +227,7 @@ class Configurable(object):
         expanded=False,
     ):
         self._parent = None
+        self._subid = ""
         self.label = None
         self.name = None
         self._confmap = {}
@@ -252,8 +253,10 @@ class Configurable(object):
                 self._subconfigs = [subconfigs]
             else:
                 self._subconfigs = subconfigs
-        for c in self._subconfigs:
-            c._parent = self
+        for c in range(len(self._subconfigs)):
+            self._subconfigs[c]._parent = self
+            if len(self._subconfigs) > 1:
+                self._subconfigs[c]._subid = str(c)
 
         if confmap is not None:
             if reset_confmap:
@@ -273,7 +276,7 @@ class Configurable(object):
                 ppath += "-"
         if self.name is not None:
             ppath += self.name
-        return ppath
+        return ppath + self._subid
 
     def __getattr__(self, item):
         cm = object.__getattribute__(self, "_confmap")
