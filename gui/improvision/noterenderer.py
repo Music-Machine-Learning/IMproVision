@@ -7,60 +7,134 @@
 # (at your option) any later version.
 
 
-from .note import Note, NoteConfiguration
+from .event import Note, NoteConfiguration, Event, ProgramChange, ControlValue
 from .configurable import Configurable, NumericConfiguration, ListConfiguration
 from lib.gibindings import Gtk
+from .utils import map_to_range
 
 
-class NoteRenderer(Configurable):
+class EventRenderer(Configurable):
     def __init__(self):
         super().__init__(expanded=True)
 
-    def render(self, vals: ([int], int)) -> [Note]:
-        notes = set()
-        maxv = vals[1]
-        for val in vals[0]:
-            notes.add(self.render_note(val, maxv))
-        return notes
+    def render(self, vals: ([float])) -> Event:
+        event = Event()
+        for val in vals:
+            event.merge(self.render_event(val))
+        return event
 
-    def render_note(self, val: int, max_val: int) -> Note:
+    def render_event(self, pctval: float) -> Event:
+        """
+        render a single event (note/cc/pc)
+        :param pctval: percent input value (0~1)
+        """
         raise NotImplementedError
 
 
-class ChromaticRenderer(NoteRenderer):
+class ChromaticRenderer(EventRenderer):
     def __init__(self, minnote: Note, maxnote: Note):
         Configurable.__init__(
-            self, "Chromatic Renderer", "chromatic-renderer",
+            self,
+            "Chromatic Renderer",
+            "chromatic-renderer",
             {
                 "min_note": NoteConfiguration("Lowest Note", "minnote", minnote),
                 "max_note": NoteConfiguration("Highest Note", "maxnote", maxnote),
-            })
+            },
+        )
 
-    def render_note(self, val: int, max_val: int) -> Note:
-        return self.min_note + int(val * (self.max_note - self.min_note).note / max_val)
+    def render_event(self, val: float) -> Event:
+        return Event(
+            notes=[self.min_note + int(val * (self.max_note - self.min_note).note)]
+        )
 
-class DiatonicRenderer(NoteRenderer):
+
+class ScaleConfiguration(ListConfiguration):
+    def __init__(
+        self, name: str, pref_path: str, default_val, items, gui_setup_cb=None
+    ):
+        items["custom"] = []
+        super().__init__(name, pref_path, default_val, items, gui_setup_cb)
+
+    def _get_gui_item(self):
+        combo = super()._get_gui_item()
+        return combo
+
+
+class DiatonicRenderer(EventRenderer):
     scales = {
-        'minor pentatonic': [Note(0), Note(3), Note(5), Note(7), Note(10)],
-        'major pentatonic': [Note(0), Note(2), Note(4), Note(7), Note(9)],
-        'major': [Note(0), Note(2), Note(4), Note(5), Note(7), Note(9), Note(11)],
-        'minor natural': [Note(0), Note(2), Note(3), Note(5), Note(7), Note(8), Note(10)],
-        'minor harmonic': [Note(0), Note(2), Note(3), Note(5), Note(7), Note(8), Note(11)],
+        "minor pentatonic": [Note(0), Note(3), Note(5), Note(7), Note(10)],
+        "major pentatonic": [Note(0), Note(2), Note(4), Note(7), Note(9)],
+        "major": [Note(0), Note(2), Note(4), Note(5), Note(7), Note(9), Note(11)],
+        "minor natural": [
+            Note(0),
+            Note(2),
+            Note(3),
+            Note(5),
+            Note(7),
+            Note(8),
+            Note(10),
+        ],
+        "minor harmonic": [
+            Note(0),
+            Note(2),
+            Note(3),
+            Note(5),
+            Note(7),
+            Note(8),
+            Note(11),
+        ],
     }
 
     def __init__(self, fundamental: Note, octaves_range: int, scale: str):
         super().__init__()
 
-        self.setup_configurable("Diatonic Reader", 'diatonic', {
-            'range': NumericConfiguration("Octaves Range", 'range',
-                                   Gtk.SpinButton, octaves_range, 1, 16),
-            'fundamental': NoteConfiguration("Fundamental", 'fundamental', fundamental),
-            'scale': ListConfiguration("Scale", 'scale', scale, self.scales),
-        })
+        self.setup_configurable(
+            "Diatonic Reader",
+            "diatonic",
+            {
+                "range": NumericConfiguration(
+                    "Octaves Range", "range", Gtk.SpinButton, octaves_range, 1, 16
+                ),
+                "fundamental": NoteConfiguration(
+                    "Fundamental", "fundamental", fundamental
+                ),
+                "scale": ScaleConfiguration("Scale", "scale", scale, self.scales),
+            },
+        )
 
-    def render_note(self, val: int, max_val: int) -> Note:
+    def render_event(self, val: float) -> Event:
         scale = self.scale
-        trasl = int(round(val * ((self.range * len(scale))-1) / max_val, 0))
+        trasl = int(round(val * ((self.range * len(scale)) - 1), 0))
         scalenote = scale[trasl % len(scale)]
         octave = int(trasl / len(scale))
-        return self.fundamental + scalenote.note + (octave * 12)
+        return Event(notes=[self.fundamental + scalenote.note + (octave * 12)])
+
+
+class ControlChangeRenderer(EventRenderer):
+    def __init__(self, control: int, minval: int, maxval: int):
+        super().__init__()
+
+        self.setup_configurable(
+            "Control Change Reader",
+            "control",
+            {
+                "control": NumericConfiguration(
+                    "Control", "control", Gtk.SpinButton, control, 0, 127
+                ),
+                "minval": NumericConfiguration(
+                    "Min Value", "minval", Gtk.SpinButton, minval, 0, 127
+                ),
+                "maxval": NumericConfiguration(
+                    "Max Value", "maxval", Gtk.SpinButton, maxval, 0, 127
+                ),
+            },
+        )
+
+    def render_event(self, val: float) -> Event:
+        e = Event(
+            controls=[
+                ControlValue(self.control, map_to_range(self.minval, self.maxval, val))
+            ]
+        )
+        return e
