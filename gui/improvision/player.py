@@ -10,53 +10,24 @@
 from pygame import midi
 from .configurable import Configurable, NumericConfiguration, ListConfiguration
 from lib.gibindings import Gtk
-from .note import Note
+from .note import Note, Event, ControlValue, ProgramChange
 
 _midi_devices = {}
 
 
-class ControlValue:
-    """
-    represents a midi control change event
-    """
-
-    def __init__(self, control: int, value: int = 0):
-        self.control = control
-        self.value = value
-
-    def __str__(self):
-        return f"CC {self.control}: {self.value}"
-
-    def __repr__(self):
-        return str(self)
-
-
-class ProgramChange:
-    """
-    represents a midi program change event
-    """
-
-    def __init__(self, program):
-        self.program = program
-
-    def __str__(self):
-        return f"PC {self.program}"
-
-    def __repr__(self):
-        return str(self)
-
-
-class NotePlayer(Configurable):
+class EventPlayer(Configurable):
     def __init__(self):
         super().__init__()
         self.active_notes = set()
+        self.last_cc = {}
+        self.last_prog = None
 
     def __del__(self):
         self.stop()
 
-    def play(self, notes: set[Note]):
-        stop_notes = self.active_notes - notes
-        play_notes = notes - self.active_notes
+    def play(self, event: Event):
+        stop_notes = self.active_notes - event.notes
+        play_notes = event.notes - self.active_notes
 
         if len(play_notes) > 0:
             self.notes_on(play_notes)
@@ -65,6 +36,20 @@ class NotePlayer(Configurable):
 
         self.active_notes -= stop_notes
         self.active_notes |= play_notes
+
+        if len(event.controls) > 0:
+            for control in event.controls:
+                if control.control in self.last_cc:
+                    if self.last_cc[control.control] != control.value:
+                        self.send_cc(control)
+                        self.last_cc[control.control] = control.value
+                else:
+                    self.send_cc(control)
+                    self.last_cc[control.control] = control.value
+
+        if event.program is not None and event.program != self.last_prog:
+            self.send_pc(event.program)
+            self.last_prog = event.program
 
     def stop(self):
         self.notes_off(self.active_notes)
@@ -83,7 +68,7 @@ class NotePlayer(Configurable):
         raise NotImplementedError
 
 
-class LogPlayer(NotePlayer):
+class LogPlayer(EventPlayer):
     def __init__(self):
         super().__init__()
 
@@ -100,7 +85,7 @@ class LogPlayer(NotePlayer):
         print(f"program change: {program}")
 
 
-class MidiPlayer(NotePlayer):
+class MidiPlayer(EventPlayer):
     MODES = ["note", "cv", "program"]
 
     def __init__(self, channel=1, device_id=None):
