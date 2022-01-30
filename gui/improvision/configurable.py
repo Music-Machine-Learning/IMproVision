@@ -22,6 +22,8 @@ class Configuration:
         self._dfl_val = dfl_val
         self.gui_setup_cb = gui_setup_cb
         self.pref_name = pref_path
+        self._label = None
+        self._changer = None
 
     def setup_preference(self, pref_path):
         if pref_path[-1] != "-":
@@ -39,15 +41,21 @@ class Configuration:
     def _set_value(self, val):
         self.app.preferences[self.pref_path] = val
 
+    def remove(self):
+        if self._label is not None:
+            self._label.destroy()
+        if self._changer is not None:
+            self._changer.destroy()
+
     def add_to_grid(self, grid, row):
-        label = Gtk.Label()
-        label.set_text(_(self.name + ":"))
-        label.set_alignment(1.0, 0.5)
-        changer = self._get_gui_item()
+        self._label = Gtk.Label()
+        self._label.set_text(_(self.name + ":"))
+        self._label.set_alignment(1.0, 0.5)
+        self._changer = self._get_gui_item()
         if self.gui_setup_cb is not None:
-            self.gui_setup_cb(changer)
-        grid.attach(label, 0, row, 1, 1)
-        grid.attach(changer, 1, row, 1, 1)
+            self.gui_setup_cb(self._changer)
+        grid.attach(self._label, 0, row, 1, 1)
+        grid.attach(self._changer, 1, row, 1, 1)
         return row + 1
 
     def specific_setup(self, pref_path, value):
@@ -218,6 +226,12 @@ class ListConfiguration(Configuration):
 
 
 class Configurable(object):
+    """
+    a configurable item is something that will hold a mix of configurations and other configurable items
+
+    these isntances are used to group features together and to automatically generate preference paths
+    """
+
     def __init__(
         self,
         label: str = None,
@@ -225,11 +239,21 @@ class Configurable(object):
         confmap: {str: Configuration} = {},
         subconfigs=[],
         expanded=False,
+        removable=False,
     ):
+        """
+        :param label: if not None, this configurable contents will be inside an expander labeled with label
+        :param name: name will be used to generate the inner configurations paths inside main preferences dict
+        :param confmap: configurations associated with this instance
+        :param subconfigs: nested configurable items
+        :param expanded: if True, start with expander open (only meaningful if label is not None)
+        :param removable: if True, add a button that removes the whole configurable object if pressed
+        """
         self._parent = None
         self._subid = ""
         self.label = None
         self.name = None
+        self.removable = removable
         self._confmap = {}
         self._subconfigs = []
         self.expanded = expanded
@@ -264,6 +288,9 @@ class Configurable(object):
             else:
                 self._confmap.update(confmap)
 
+        self._remove_btn = None
+        self._expander = None
+
     def add_configurations(self, confmap: {str: Configuration}):
         if confmap is not None:
             self._confmap.update(confmap)
@@ -284,6 +311,18 @@ class Configurable(object):
             return cm[item].get_value()
         raise AttributeError
 
+    def remove(self, _):
+        for c in self._confmap.values():
+            c.remove()
+
+        for s in self._subconfigs:
+            s.remove(_)
+
+        if self._remove_btn is not None:
+            self._remove_btn.destroy()
+        if self._expander is not None:
+            self._expander.destroy()
+
     def add_to_grid(self, grid, row):
         for c in self._confmap.values():
             c.setup_preference(self.get_prefpath())
@@ -291,13 +330,19 @@ class Configurable(object):
         outgrid = grid
         outrow = row
         if self.label is not None:
-            expander = Gtk.Expander(label=self.label)
-            expander.set_expanded(self.expanded)
+            self._expander = Gtk.Expander(label=self.label)
+            self._expander.set_expanded(self.expanded)
             outgrid = Gtk.Grid()
-            expander.add(outgrid)
-            grid.attach(expander, 1, row, 1, 1)
+            self._expander.add(outgrid)
+            grid.attach(self._expander, 1, row, 1, 1)
             outrow = 0
             row += 1
+
+        if self.removable:
+            self._remove_btn = Gtk.Button(label="Remove")
+            self._remove_btn.connect("clicked", self.remove)
+            outgrid.attach(self._remove_btn, 0, outrow, 2, 1)
+            outrow += 1
 
         for c in self._confmap.values():
             outrow = c.add_to_grid(outgrid, outrow)
