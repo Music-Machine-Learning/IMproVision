@@ -303,7 +303,7 @@ class Configurable(object):
                 ppath += "-"
         if self.name is not None:
             ppath += self.name
-        return ppath + self._subid
+        return ppath + str(self._subid)
 
     def __getattr__(self, item):
         cm = object.__getattribute__(self, "_confmap")
@@ -311,7 +311,17 @@ class Configurable(object):
             return cm[item].get_value()
         raise AttributeError
 
+    def remove_child(self, child):
+        """
+        function called upon child removal, if parent needs to take action it should reimplement this
+        method
+        """
+        pass
+
     def remove(self, _):
+        if self._parent is not None:
+            self._parent.remove_child(self)
+
         for c in self._confmap.values():
             c.remove()
 
