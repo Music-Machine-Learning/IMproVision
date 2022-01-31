@@ -69,6 +69,8 @@ class EventPlayer(Configurable):
 
 
 class LogPlayer(EventPlayer):
+    type = "log"
+
     def __init__(self):
         super().__init__()
 
@@ -86,6 +88,8 @@ class LogPlayer(EventPlayer):
 
 
 class MidiPlayer(EventPlayer):
+    type = "midi"
+
     MODES = ["note", "cv", "program"]
 
     def __init__(self, channel=1, device_id=None):
@@ -169,6 +173,8 @@ class MidiPlayer(EventPlayer):
 
 
 class MonoMidiPlayer(MidiPlayer):
+    type = "mono"
+
     def __init__(self, device_id=None, channel=0, priority_high=False):
         super().__init__(device_id, channel)
         self.priority_high = priority_high
@@ -183,3 +189,12 @@ class MonoMidiPlayer(MidiPlayer):
         else:
             pn = notes
         super().play(pn)
+
+
+playertypes = [
+    LogPlayer,
+    MidiPlayer,
+    MonoMidiPlayer,
+]
+
+playertypesmap = {p.type: p for p in playertypes}
