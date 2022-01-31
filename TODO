@@ -2,3 +2,5 @@
 - finestra di configurazione di un nuovo consumer (prototipo nel consumer generale, implementazioni locali per impostare i parametri, i.e. tipi di renderer), alla pressione del pulsante di aggiunta viene mostrata la finestra e viene aggiunto il nuovo consumer
 - finestra di configurazione della scala custom
 - compilazione del binario risultante
+- embeddare le configurazioni nei file salvati
+- rendere disattivabili i renderer
