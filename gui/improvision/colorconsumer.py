@@ -83,7 +83,7 @@ class ColorConsumer(threading.Thread, Configurable):
                 event.merge(self.renderers[r].render(playpoints_list[r]))
             for p in self.players:
                 p.play(event)
-        p.stop()
+        self.stop()
 
     def stop(self):
         for p in self.players:
@@ -98,7 +98,7 @@ class ColorConsumer(threading.Thread, Configurable):
         self.enabled = False
         self._should_exit = True
         self.data_ready([])
-        p.stop()
+        self.stop()
 
     # subclasses must implement this method
     def process_data(self, color_column) -> [[float]]:
