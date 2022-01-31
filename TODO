@@ -4,3 +4,4 @@
 - compilazione del binario risultante
 - embeddare le configurazioni nei file salvati
 - rendere disattivabili i renderer
+- aggiungere un colorpicker per i consumer che centri tutti i valori sul colore selezionato
