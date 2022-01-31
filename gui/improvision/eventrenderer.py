@@ -32,7 +32,9 @@ class EventRenderer(Configurable):
 
 
 class ChromaticRenderer(EventRenderer):
-    def __init__(self, minnote: Note, maxnote: Note):
+    type = "chromatic"
+
+    def __init__(self, minnote: Note = Note(0), maxnote: Note = Note(127)):
         Configurable.__init__(
             self,
             "Chromatic Renderer",
@@ -62,6 +64,8 @@ class ScaleConfiguration(ListConfiguration):
 
 
 class DiatonicRenderer(EventRenderer):
+    type = "diatonic"
+
     scales = {
         "minor pentatonic": [Note(0), Note(3), Note(5), Note(7), Note(10)],
         "major pentatonic": [Note(0), Note(2), Note(4), Note(7), Note(9)],
@@ -86,7 +90,12 @@ class DiatonicRenderer(EventRenderer):
         ],
     }
 
-    def __init__(self, fundamental: Note, octaves_range: int, scale: str):
+    def __init__(
+        self,
+        fundamental: Note = Note("C2"),
+        octaves_range: int = 2,
+        scale: str = "major",
+    ):
         super().__init__()
 
         self.setup_configurable(
@@ -112,7 +121,9 @@ class DiatonicRenderer(EventRenderer):
 
 
 class ControlChangeRenderer(EventRenderer):
-    def __init__(self, control: int, minval: int, maxval: int):
+    type = "cc"
+
+    def __init__(self, control: int = 7, minval: int = 0, maxval: int = 127):
         super().__init__()
 
         self.setup_configurable(
@@ -138,3 +149,12 @@ class ControlChangeRenderer(EventRenderer):
             ]
         )
         return e
+
+
+renderertypes = [
+    ChromaticRenderer,
+    DiatonicRenderer,
+    ControlChangeRenderer,
+]
+
+renderertypesmap = {r.type: r for r in renderertypes}
