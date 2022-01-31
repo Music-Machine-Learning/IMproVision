@@ -73,30 +73,6 @@ class IMproVision(gui.overlays.Overlay, Configurable):
         self.sleeper = threading.Event()
         self.data_ready = threading.Event()
 
-        # XXX: setup note consumers here
-        self.consumers = [
-            colorconsumer.LumaConsumer(
-                eventrenderer.DiatonicRenderer(Note("A1"), 3, "minor pentatonic"),
-                [player.MidiPlayer(channel=0)],
-                0,
-                0.1,
-            ),
-            colorconsumer.ThreeValueColorConsumer(
-                eventrenderer.DiatonicRenderer(Note("C2"), 5, "major pentatonic"),
-                eventrenderer.ControlChangeRenderer(7, 0, 127),
-                eventrenderer.ControlChangeRenderer(9, 0, 127),
-                [player.MidiPlayer(channel=1)],
-                colorrange.HSVColorRange("hue", 0, "saturation", (0.8, 1), (0.4, 0.6)),
-            ),
-            colorconsumer.ThreeValueColorConsumer(
-                eventrenderer.DiatonicRenderer(Note("C2"), 5, "major pentatonic"),
-                eventrenderer.ControlChangeRenderer(7, 0, 127),
-                eventrenderer.ControlChangeRenderer(9, 0, 127),
-                [player.MidiPlayer(channel=1)],
-                colorrange.RGBColorRange("red", 0, "green", (0.8, 1), (0.4, 0.6)),
-            ),
-        ]
-
         Configurable.__init__(
             self,
             None,
@@ -127,7 +103,7 @@ class IMproVision(gui.overlays.Overlay, Configurable):
                     self.SCANLINE_MAX_TIME_RES_MS,
                 ),
             },
-            self.consumers,
+            colorconsumer.ConsumerWidget("consumers"),
             expanded=True,
         )
 
