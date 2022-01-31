@@ -9,21 +9,22 @@
 
 import threading
 import queue
+from typing import Callable
 
 from lib.gibindings import Gtk
-from .eventrenderer import EventRenderer
+from .eventrenderer import EventRenderer, renderertypesmap
 from .event import Event
-from .player import EventPlayer
+from .player import EventPlayer, playertypesmap
 from .configurable import (
     Configurable,
     Configuration,
-    NumericConfiguration,
-    ListConfiguration,
     SliderConfiguration,
     BoolConfiguration,
 )
-from .colorrange import ColorRangeConfiguration, ThreeValueColorRange
+from .colorrange import ColorRangeConfiguration, ThreeValueColorRange, HSVColorRange
 from gui.colors.sliders import HCYLumaSlider
+
+from . import eventrenderer, player, event
 
 from lib import color
 
@@ -80,7 +81,8 @@ class ColorConsumer(threading.Thread, Configurable):
             playpoints_list = self.process_data(data)
             for r in range(min(len(self.renderers), len(playpoints_list))):
                 # avoid errors, if too few renderers or playpoints are available only process what we can
-                event.merge(self.renderers[r].render(playpoints_list[r]))
+                if self.renderers[r] is not None:
+                    event.merge(self.renderers[r].render(playpoints_list[r]))
             for p in self.players:
                 p.play(event)
         self.stop()
@@ -110,28 +112,25 @@ class ColorConsumer(threading.Thread, Configurable):
         """
         raise NotImplementedError
 
-
-class ConsumerWidget(Configurable):
-    """
-    widget holding the actual active consumers, stores the list in preferences and handles
-    addition and removal of active consumers
-    """
-
-    def __init__(self, name: str):
-        super().__init__(name=name)
-        self.active_consumers = Configuration(name, self.get_prefpath(), [])
-
-    def add_to_grid(self, grid, row):
-        pass
+    @staticmethod
+    def from_str(confstr: str):
+        """
+        istantiate a new ColorConsumer item using confstring as input
+        :param confstr: configuration string, the same value returned from str(self)
+        :return new ColorConsumer with configurations loaded
+        """
+        raise NotImplementedError
 
 
 class LumaConsumer(ColorConsumer, Configurable):
+    type = "luma"
+
     def __init__(
         self,
-        renderer: EventRenderer,
         players: [EventPlayer],
-        minluma: float,
-        maxluma: float,
+        renderer: EventRenderer,
+        minluma: float = 0,
+        maxluma: float = 0.1,
     ):
         ColorConsumer.__init__(self, [renderer], players)
 
@@ -175,15 +174,28 @@ class LumaConsumer(ColorConsumer, Configurable):
 
         return [playpoints]
 
+    def __str__(self):
+        return ",".join([p.type for p in self.players]) + f"/{self.renderers[0].type}"
+
+    @staticmethod
+    def from_str(confstr: str):
+        players = [playertypesmap[p]() for p in confstr.split("/")[0].split(",")]
+        renderer = renderertypesmap[confstr.split("/")[1]]()
+        return LumaConsumer(players, renderer)
+
 
 class ThreeValueColorConsumer(ColorConsumer, Configurable):
+    type = "threeValue"
+
     def __init__(
         self,
-        hrenderer: EventRenderer,
-        xrenderer: EventRenderer,
-        yrenderer: EventRenderer,
         players: [EventPlayer],
-        default_range: ThreeValueColorRange,
+        hrenderer: EventRenderer,
+        xrenderer: EventRenderer = None,
+        yrenderer: EventRenderer = None,
+        default_range: ThreeValueColorRange = HSVColorRange(
+            "value", 1, "hue", (0, 1), (0.7, 0.9)
+        ),
     ):
         """
         :param hrenderer: height renderer, will receive the graphical height of the matched color
@@ -237,3 +249,124 @@ class ThreeValueColorConsumer(ColorConsumer, Configurable):
                     windowsize = 0
 
         return [hplaypoints, xplaypoints, yplaypoints]
+
+    def __str__(self):
+        out = ",".join([p.type for p in self.players]) + "/"
+        for r in self.renderers:
+            if r is None:
+                out += "None"
+            else:
+                out += r.type
+            out += ","
+        return out[:-1]
+
+    @staticmethod
+    def from_str(confstr: str):
+        players = [playertypesmap[p]() for p in confstr.split("/")[0].split(",")]
+        renderers = []
+        for r in renderertypesmap[confstr.split("/")[1]].split(","):
+            if r == "None":
+                renderers.append(None)
+            else:
+                renderers.append(renderertypesmap[r]())
+        return ThreeValueColorConsumer(players, *renderers)
+
+
+colorconsumertypes = [
+    LumaConsumer,
+    ThreeValueColorConsumer,
+]
+
+colorconsumertypesmap = {c.type: c for c in colorconsumertypes}
+
+
+class NewConsumerPage:
+    """
+    page widget handling the addition of a new consumer
+    """
+
+    def new_consumer(self, add_consumer_cb: Callable):
+        add_consumer_cb(
+            LumaConsumer(
+                [player.MidiPlayer()],
+                eventrenderer.DiatonicRenderer(),
+            )
+        )
+
+    def show(self):
+        pass
+
+
+class ConsumerWidget(Configurable, Configuration):
+    """
+    widget holding the actual active consumers, stores the list in preferences and handles
+    addition and removal of active consumers
+    """
+
+    def __init__(self, name: str):
+        Configurable.__init__(self, name=name)
+        Configuration.__init__(self, "Consumers", "consumers", [])
+        self.consumers = []
+        self.consumers_widget = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.new_consumer_btn = Gtk.Button(label="Add consumer")
+        self.main_widget = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.main_widget.pack_start(self.consumers_widget, False, True, 0)
+        self.main_widget.pack_end(self.new_consumer_btn, False, True, 0)
+        self.main_widget.show_all()
+        self.new_consumer_page = NewConsumerPage()
+
+        def new_consumer(_):
+            self.new_consumer_page.new_consumer(self.add_consumer)
+            self.new_consumer_page.show()
+
+        self.new_consumer_btn.connect("clicked", new_consumer)
+
+    def remove_child(self, consumer: ColorConsumer):
+        if isinstance(consumer, ColorConsumer):
+            found = None
+            for cons in range(len(self.consumers)):
+                if self.consumers[cons][0] is consumer:
+                    found = cons
+                    break
+
+            if found is not None:
+                self.consumers[found][1].destroy()
+                del self.consumers[found]
+                self._set_value(self.get_value())
+
+    def add_consumer(self, consumer: ColorConsumer):
+        cgrid = Gtk.Grid()
+        self.consumers.append((consumer, cgrid))
+        consumer._parent = self
+        consumer._subid = len(self.consumers)
+        consumer.add_to_grid(cgrid, 0)
+        self.consumers_widget.pack_start(cgrid, False, True, 0)
+        self.consumers_widget.show_all()
+
+        self._set_value(self.get_value())
+
+    def remove(self, _):
+        self.consumers_widget.destroy()
+        self.new_consumer_btn.destroy()
+        self.main_widget.destroy()
+        super().remove(_)
+
+    def add_to_grid(self, grid, row):
+        self.setup_preference(self.get_prefpath())
+
+        row = super().add_to_grid(grid, row)
+        grid.attach(self._get_gui_item(), 0, row, 2, 1)
+        return row + 1
+
+    def specific_setup(self, pref_path, value):
+        for cons in value:
+            cname = cons.split("-")[0]
+            cconf = "-".join(cons.split("-")[1:])
+            if cname in colorconsumertypesmap:
+                self.add_consumer(colorconsumertypesmap[cname].from_str(cconf))
+
+    def _get_gui_item(self):
+        return self.main_widget
+
+    def get_value(self):
+        return [f"{c[0].type}-{c[0]}" for c in self.consumers]
